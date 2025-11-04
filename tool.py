@@ -1,134 +1,180 @@
 import json
 import os
 import time
-import re
 from pynput import keyboard
 from pynput.keyboard import Key, Listener
 import pyautogui
 from typing import Dict
-import pyperclip
+import pyperclip  # Make sure this is installed: pip install pyperclip
 
-# Global listener to allow stopping
-listener = None
-
-# File to store prompts
+# --- Configuration ---
+# File to store your keywords and replacements
 PROMPTS_FILE = "prompts.json"
+
+# Global listener variable to allow stopping it from anywhere
+listener = None
 
 class RealtimeTextReplacer:
     def __init__(self):
         self.prompts = self.load_prompts()
         self.current_buffer = ""
-        self.max_keyword_length = max(len(k) for k in self.prompts.keys()) if self.prompts else 20
-        self.is_replacing = False  # Flag to prevent recursion
+        self.is_replacing = False  # A flag to prevent the script from triggering itself
 
     def load_prompts(self) -> Dict[str, str]:
-        """Load prompts from a JSON file."""
+        """Loads keywords and replacements from the JSON file."""
         if os.path.exists(PROMPTS_FILE):
-            with open(PROMPTS_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
+            try:
+                with open(PROMPTS_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Error loading prompts file: {e}. Starting with an empty list.")
+                return {}
         return {}
 
     def save_prompts(self, prompts: Dict[str, str]) -> None:
-        """Save prompts to a JSON file."""
-        with open(PROMPTS_FILE, 'w', encoding='utf-8') as f:
-            json.dump(prompts, f, ensure_ascii=False, indent=2)
+        """Saves the current keywords and replacements to the JSON file."""
+        try:
+            with open(PROMPTS_FILE, 'w', encoding='utf-8') as f:
+                json.dump(prompts, f, ensure_ascii=False, indent=4)
+        except IOError as e:
+            print(f"Error saving prompts file: {e}")
+
+    def add_prompt(self, keyword: str, content: str):
+        """Adds a new keyword and replacement, then saves to the file."""
+        self.prompts[keyword] = content
+        self.save_prompts(self.prompts)
+        print(f"Added keyword: '{keyword}'")
+
+    def remove_prompt(self, keyword: str):
+        """Removes a keyword, then saves the change."""
+        if keyword in self.prompts:
+            del self.prompts[keyword]
+            self.save_prompts(self.prompts)
+            print(f"Removed keyword: '{keyword}'")
 
     def on_press(self, key):
-        """Handle key press events."""
-        # If a replacement is in progress, ignore new key presses
+        """This function is called every time a key is pressed."""
         if self.is_replacing:
-            return
+            return  # Ignore key presses while a replacement is happening
 
         try:
+            # Add typed characters to our buffer
             if hasattr(key, 'char') and key.char is not None:
                 self.current_buffer += key.char
+            # The SPACE key is our trigger to check for a keyword
             elif key == Key.space:
                 self.current_buffer += ' '
-            # Reset buffer on enter or tab for cleaner matching
-            elif key in [Key.enter, Key.tab]:
-                self.current_buffer = ""
+                self.check_for_replacement()
+            # Handle backspace to keep the buffer accurate
             elif key == Key.backspace:
-                if self.current_buffer:
-                    self.current_buffer = self.current_buffer[:-1]
+                self.current_buffer = self.current_buffer[:-1]
             
-            # For debugging: print the current buffer
-            # print(f"Buffer: '{self.current_buffer}'")
-
-            # Keep the buffer manageable
+            # Keep the buffer from getting too long
             if len(self.current_buffer) > 100:
                 self.current_buffer = self.current_buffer[-100:]
 
-            self.check_for_replacement()
-
         except AttributeError:
-            # Special keys (ctrl, alt, etc.) are ignored
+            # Ignore special keys that don't have a 'char' attribute
             pass
 
     def check_for_replacement(self):
-        """Check if buffer ends with a keyword and perform replacement if found."""
+        """Checks if the buffer ends with a known keyword followed by a space."""
         if self.is_replacing:
             return
 
-        # Sort keywords by length in descending order to match longer keywords first
+        # Sort keywords by length (longest first) to avoid partial matches
         sorted_keywords = sorted(self.prompts.keys(), key=len, reverse=True)
         
         for keyword in sorted_keywords:
-            if self.current_buffer.endswith(keyword):
+            # The trigger is the keyword itself, followed by a space
+            trigger_phrase = keyword + ' '
+            if self.current_buffer.endswith(trigger_phrase):
                 print(f"--- Match Found! Keyword: '{keyword}' ---")
                 self.perform_replacement(keyword)
-                return  # Only replace one keyword at a time
+                return # Exit after the first match is found and replaced
 
-    def perform_replacement(self, keyword):
-        """Perform the actual replacement in the active application."""
-        self.is_replacing = True  # Set replacement flag
+    def perform_replacement(self, keyword: str):
+        """Replaces the typed keyword with the desired text using your specific sequence."""
+        self.is_replacing = True  # Set the flag to block on_press
         
         replacement_text = self.prompts[keyword]
         
-        # 1. Backspace the keyword to delete it
-        print(f"Deleting keyword '{keyword}' by pressing backspace {len(keyword)} times.")
-        for _ in range(len(keyword)):
-            pyautogui.press('backspace')
-            time.sleep(0.01) # Small delay for each backspace
+        # 1. Backspace the triggering space character first
+        pyautogui.press('backspace')
+        time.sleep(0.05)
 
-        # 2. Type the replacement text
-        print(f"Typing replacement text...")
-        pyautogui.typewrite(replacement_text, interval=0.01)
-
-        # Reset the buffer
-        self.current_buffer = ""
+        # 2. Execute the precise selection and deletion sequence you requested
+        print("Executing selection sequence: CTRL+SHIFT -> LEFT -> LEFT -> DELETE")
         
+        # Step 1: Press CTRL+SHIFT and hold them
+        pyautogui.keyDown('ctrl')
+        pyautogui.keyDown('shift')
+        time.sleep(0.05)
+        
+        # Step 2: Press left arrow two times
+        pyautogui.press('left')
+        pyautogui.press('left')
+        
+        # Step 3: Release CTRL+SHIFT
+        pyautogui.keyUp('shift')
+        pyautogui.keyUp('ctrl')
+        time.sleep(0.05)
+        
+        # Step 4: Press DELETE key
+        pyautogui.press('delete')
+        
+        # 3. Use the clipboard to paste the replacement text for maximum speed
+        print("Pasting replacement text from clipboard...")
+        original_clipboard = pyperclip.paste() # Save what the user had on their clipboard
+        try:
+            pyperclip.copy(replacement_text)
+            time.sleep(0.1)  # Give the system a moment to update the clipboard
+            pyautogui.hotkey('ctrl', 'v') # Paste
+        finally:
+            # IMPORTANT: Restore the user's original clipboard content
+            pyperclip.copy(original_clipboard)
+
+        # 4. Clean up and finish
+        self.current_buffer = "" # Reset the buffer to prevent re-triggering
         print(f"--- Replacement Complete for '{keyword}' ---")
-        self.is_replacing = False # Unset replacement flag
+        self.is_replacing = False # Release the flag
+
+    def on_release(self, key):
+        """This function is called when a key is released."""
+        # Stop the listener if the ESC key is pressed
+        if key == Key.esc:
+            print("\nESC key pressed. Stopping script...")
+            return False
 
     def start_monitoring(self):
-        """Start the keyboard monitoring."""
-        print("Monitoring started. Type your keywords to trigger replacement.")
+        """Starts the keyboard listener and waits for keywords."""
+        print("--- Text Replacer is now active ---")
+        print("Type a keyword followed by a SPACE to trigger a replacement.")
         print("Press ESC to exit.")
         
+        # Create and start the listener
         global listener
         listener = Listener(on_press=self.on_press, on_release=self.on_release)
         listener.start()
-        listener.join()
-    
-    def on_release(self, key):
-        """Handle key release events."""
-        if key == Key.esc:
-            print("\nStopping script...")
-            return False  # Stop the listener
+        listener.join() # Wait for the listener to stop
 
-def main():
-    # Example of how to add a prompt before starting
-    replacer = RealtimeTextReplacer()
-    
-    # Clear existing prompts if you want to start fresh
-    # replacer.save_prompts({}) 
-    
-    # Add some example prompts
-    # replacer.add_prompt("@email", "my.email@example.com")
-    # replacer.add_prompt("@sig", "Best regards,\nJohn Doe")
-
-    print("Script is active...")
-    replacer.start_monitoring()
+def setup_initial_prompts(replacer: RealtimeTextReplacer):
+    """Adds some example prompts if the file is empty."""
+    if not replacer.prompts:
+        print("No prompts found. Adding some examples to 'prompts.json'...")
+        replacer.add_prompt("@email", "my.personal.email@example.com")
+        replacer.add_prompt("@sig", "Best regards,\nYour Name")
+        replacer.add_prompt("syc", "Sincerely,\n\nYour Name\nYour Title")
+        print("Example prompts have been added.")
 
 if __name__ == "__main__":
-    main()
+    # Create an instance of our replacer class
+    replacer = RealtimeTextReplacer()
+    
+    # Optional: Add example prompts if the JSON file is empty
+    setup_initial_prompts(replacer)
+    
+    # Start the main monitoring loop
+    replacer.start_monitoring()
+
+    print("--- Script has been terminated ---")
