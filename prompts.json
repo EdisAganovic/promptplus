@@ -1,0 +1,4 @@
+{
+  ":testiramo": "Nano banana",
+  ":elmin": "🌍 Bosanski Prompt Manager\nSystem-wide Prompt Manager\n\nOvaj prompt manager radi sistemski. Nakon što definišete svoje prompte, možete ih koristiti bilo gdje u bilo kojoj aplikaciji na vašem računaru.\nKako koristiti:\n\n    Definišite svoje prompte pomoću ključnih riječi (npr. :prevedi, :sumiraj, itd.)\n    Kopirajte tekst koji sadrži ove ključne riječi u clipboard\n    Pritisnite Ctrl+Shift+V da biste zamijenili ključne riječi sa njihovim sadržajem\n    Zatim možete zalijepiti (paste) tekst sa zamijenjenim promptima bilo gdje\n"
+}
