@@ -1,0 +1,18 @@
+# For keyboard monitoring and automation - using keyboard library which is better for special keys like CTRL
+pynput==1.7.6
+keyboard==0.13.5
+
+# For GUI automation (mouse and keyboard control)
+pyautogui==0.9.54
+
+# For clipboard operations
+pyperclip==1.8.2
+
+# For the web interface
+streamlit==1.39.0
+
+# For JSON handling (usually part of stdlib but good to specify)
+json5==0.9.14
+
+# For typing hints
+typing-extensions==4.8.0

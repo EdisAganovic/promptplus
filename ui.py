@@ -20,18 +20,18 @@ def save_prompts(prompts: Dict[str, str]) -> None:
 
 def main():
     st.set_page_config(page_title="Prompt Manager", layout="wide")
-    st.title("🌍 Bosanski Prompt Manager")
+    st.title("🌍 GPT Plus")
     
     # Initialize session state
     if 'prompts' not in st.session_state:
         st.session_state.prompts = load_prompts()
     
     # Sidebar for managing prompts
-    st.sidebar.header("Upravljanje Promptima")
+    st.sidebar.header("Dodaj novi prompt")
     
     # Form to add new prompt in sidebar
     with st.sidebar.form("add_prompt_form"):
-        new_keyword = st.text_input("Ključna riječ (npr. :prevedi)", placeholder=":ime_prompta")
+        new_keyword = st.text_input("Ključna riječ (npr. `:lektor`)", placeholder=":ime_prompta")
         new_content = st.text_area("Sadržaj prompta", height=100)
         submitted = st.form_submit_button("Dodaj Prompt")
         
@@ -49,7 +49,10 @@ def main():
     if st.session_state.prompts:
         st.write("Sljedeći prompti su trenutno aktivni:")
         for i, (keyword, content) in enumerate(st.session_state.prompts.items()):
-            with st.expander(f"{keyword}"):
+            # Format the keyword for proper display in Streamlit, especially for keywords starting with ':'
+            display_keyword = f"`{keyword}`"
+            with st.expander(display_keyword):
+                # Display keyword prominently at the top when expanded
                 # Edit form for each prompt
                 edit_form_key = f"edit_form_{i}"
                 with st.form(edit_form_key):

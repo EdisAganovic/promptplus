@@ -1,18 +1,13 @@
 import json
 import os
 import time
-from pynput import keyboard
-from pynput.keyboard import Key, Listener
 import pyautogui
-from typing import Dict
 import pyperclip  # Make sure this is installed: pip install pyperclip
+import keyboard  # Make sure this is installed: pip install keyboard
 
 # --- Configuration ---
 # File to store your keywords and replacements
 PROMPTS_FILE = "prompts.json"
-
-# Global listener variable to allow stopping it from anywhere
-listener = None
 
 class RealtimeTextReplacer:
     def __init__(self):
@@ -20,7 +15,7 @@ class RealtimeTextReplacer:
         self.current_buffer = ""
         self.is_replacing = False  # A flag to prevent the script from triggering itself
 
-    def load_prompts(self) -> Dict[str, str]:
+    def load_prompts(self) -> dict:
         """Loads keywords and replacements from the JSON file."""
         if os.path.exists(PROMPTS_FILE):
             try:
@@ -31,7 +26,7 @@ class RealtimeTextReplacer:
                 return {}
         return {}
 
-    def save_prompts(self, prompts: Dict[str, str]) -> None:
+    def save_prompts(self, prompts: dict) -> None:
         """Saves the current keywords and replacements to the JSON file."""
         try:
             with open(PROMPTS_FILE, 'w', encoding='utf-8') as f:
@@ -52,30 +47,27 @@ class RealtimeTextReplacer:
             self.save_prompts(self.prompts)
             print(f"Removed keyword: '{keyword}'")
 
-    def on_press(self, key):
+    def on_key_event(self, event):
         """This function is called every time a key is pressed."""
         if self.is_replacing:
             return  # Ignore key presses while a replacement is happening
 
-        try:
+        # Only process key down events, not key up events
+        if event.event_type == keyboard.KEY_DOWN:
             # Add typed characters to our buffer
-            if hasattr(key, 'char') and key.char is not None:
-                self.current_buffer += key.char
+            if len(event.name) == 1:  # Regular character keys
+                self.current_buffer += event.name
             # The SPACE key is our trigger to check for a keyword
-            elif key == Key.space:
+            elif event.name == 'space':
                 self.current_buffer += ' '
                 self.check_for_replacement()
             # Handle backspace to keep the buffer accurate
-            elif key == Key.backspace:
+            elif event.name == 'backspace':
                 self.current_buffer = self.current_buffer[:-1]
             
             # Keep the buffer from getting too long
             if len(self.current_buffer) > 100:
                 self.current_buffer = self.current_buffer[-100:]
-
-        except AttributeError:
-            # Ignore special keys that don't have a 'char' attribute
-            pass
 
     def check_for_replacement(self):
         """Checks if the buffer ends with a known keyword followed by a space."""
@@ -95,56 +87,38 @@ class RealtimeTextReplacer:
 
     def perform_replacement(self, keyword: str):
         """Replaces the typed keyword with the desired text using your specific sequence."""
-        self.is_replacing = True  # Set the flag to block on_press
+        self.is_replacing = True  # Set the flag to block on_key_event
         
         replacement_text = self.prompts[keyword]
         
-        # 1. Backspace the triggering space character first
-        pyautogui.press('backspace')
-        time.sleep(0.05)
+        # 1. Determine total length to delete (keyword + space character)
+        total_length = len(keyword) + 1  # +1 for the space character
+        
+        # 2. Delete the keyword and space character in one loop
+        for _ in range(total_length):
+            pyautogui.press('backspace')
 
-        # 2. Execute the precise selection and deletion sequence you requested
-        print("Executing selection sequence: CTRL+SHIFT -> LEFT -> LEFT -> DELETE")
-        
-        # Step 1: Press CTRL+SHIFT and hold them
-        pyautogui.keyDown('ctrl')
-        pyautogui.keyDown('shift')
-        time.sleep(0.05)
-        
-        # Step 2: Press left arrow two times
-        pyautogui.press('left')
-        pyautogui.press('left')
-        
-        # Step 3: Release CTRL+SHIFT
-        pyautogui.keyUp('shift')
-        pyautogui.keyUp('ctrl')
-        time.sleep(0.05)
-        
-        # Step 4: Press DELETE key
-        pyautogui.press('delete')
-        
         # 3. Use the clipboard to paste the replacement text for maximum speed
         print("Pasting replacement text from clipboard...")
-        original_clipboard = pyperclip.paste() # Save what the user had on their clipboard
+        original_clipboard = pyperclip.paste()  # Save what the user had on their clipboard
         try:
             pyperclip.copy(replacement_text)
-            time.sleep(0.1)  # Give the system a moment to update the clipboard
-            pyautogui.hotkey('ctrl', 'v') # Paste
+            pyautogui.hotkey('ctrl', 'v')  # Paste
         finally:
             # IMPORTANT: Restore the user's original clipboard content
             pyperclip.copy(original_clipboard)
 
         # 4. Clean up and finish
-        self.current_buffer = "" # Reset the buffer to prevent re-triggering
+        self.current_buffer = ""  # Reset the buffer to prevent re-triggering
         print(f"--- Replacement Complete for '{keyword}' ---")
-        self.is_replacing = False # Release the flag
+        self.is_replacing = False  # Release the flag
 
-    def on_release(self, key):
-        """This function is called when a key is released."""
-        # Stop the listener if the ESC key is pressed
-        if key == Key.esc:
+    def stop_listener(self, event):
+        """This function is called when the ESC key is pressed."""
+        if event.name == 'esc' and event.event_type == keyboard.KEY_DOWN:
             print("\nESC key pressed. Stopping script...")
-            return False
+            keyboard.unhook_all()
+            os._exit(0)  # Force exit the program
 
     def start_monitoring(self):
         """Starts the keyboard listener and waits for keywords."""
@@ -152,11 +126,12 @@ class RealtimeTextReplacer:
         print("Type a keyword followed by a SPACE to trigger a replacement.")
         print("Press ESC to exit.")
         
-        # Create and start the listener
-        global listener
-        listener = Listener(on_press=self.on_press, on_release=self.on_release)
-        listener.start()
-        listener.join() # Wait for the listener to stop
+        # Hook the keyboard events
+        keyboard.hook(self.on_key_event)
+        keyboard.hook(self.stop_listener)
+        
+        # Keep the script running
+        keyboard.wait('esc')  # Wait specifically for the ESC key to exit
 
 def setup_initial_prompts(replacer: RealtimeTextReplacer):
     """Adds some example prompts if the file is empty."""
