@@ -1,27 +1,40 @@
 # For keyboard monitoring and automation - using keyboard library which is better for special keys like CTRL
-pynput==1.7.6
-keyboard==0.13.5
+pynput
+keyboard
 
 # For GUI automation (mouse and keyboard control)
-pyautogui==0.9.54
+pyautogui
 
 # For clipboard operations
-pyperclip==1.8.2
+pyperclip
 
 # For the web interface
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-jinja2==3.1.2
-python-multipart==0.0.6
+fastapi
+uvicorn[standard]
+jinja2
+python-multipart
 
 # For token counting (OpenAI)
-tiktoken==0.5.1
+tiktoken
 
 # For process management to prevent multiple instances
-psutil==5.9.5
+psutil
 
 # For JSON handling (usually part of stdlib but good to specify)
-json5==0.9.14
+json5
 
 # For typing hints
-typing-extensions==4.8.0
+typing-extensions
+
+# For Streamlit interface
+streamlit
+
+# For Gemini AI integration
+google-generativeai
+
+# For environment variable management
+python-dotenv
+
+# For Qt interface
+PyQt6
+PyQt6-WebEngine
