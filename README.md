@@ -6,23 +6,30 @@ Alat za upravljanje promptima sa ključnim riječima koje se automatski zamjenju
 ## Funkcionalnosti
 - Definisanje prompta sa ključnim riječima (npr. :prevedi, :sumiraj)
 - Automatska zamjena ključnih riječi dok kucate u bilo kojoj aplikaciji
-- Upravljanje promptima kroz konzolni interfejs
+- Upravljanje promptima kroz web interfejs (FastAPI)
 
 ## Korištenje
-1. Pokrenite aplikaciju: `python realtime_prompt_replacer.py`
-2. Dodajte svoje prompte sa ključnim riječima
-3. Pokrenite "Start real-time replacement"
-4. U bilo kojoj aplikaciji, kada ukucate definisanu ključnu riječ (npr. :testiramo) i pritisnete razmaknicu ili enter, 
+1. Pokrenite UI: `python ui.py`
+2. Otvorite preglednik na `http://127.0.0.1:8000`
+3. Dodajte svoje prompte sa ključnim riječima
+4. Pokrenite alat: `python main.py` 
+5. U bilo kojoj aplikaciji, kada ukucate definisanu ključnu riječ (npr. :testiramo) i pritisnete razmaknicu, 
    tekst će se automatski zamijeniti sa sadržajem prompta
 
 ## Instalacija
 ```
-uv pip install pyautogui pynput pyperclip
+uv pip install -r requirements.txt
 ```
 
 ## Pokretanje
+Za pokretanje UI-a:
 ```
-python realtime_prompt_replacer.py
+python ui.py
+```
+
+Za pokretanje alata:
+```
+python main.py
 ```
 
 ## Napomene
@@ -30,3 +37,4 @@ python realtime_prompt_replacer.py
 - Prilikom zamjene, originalni sadržaj clipboarda se čuva i vraća nakon zamjene
 - Aplikacija koristi fajl prompts.json za čuvanje prompta između sesija
 - Za najbolje iskustvo, koristite ključne riječi koje se neće pojaviti slučajno u normalnom tekstu
+- Web interfejs koristi FastAPI umjesto Streamlita zbog problema sa kompilacijom u EXE

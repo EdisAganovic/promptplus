@@ -25,7 +25,17 @@ class RealtimeTextReplacer:
         if os.path.exists(PROMPTS_FILE):
             try:
                 with open(PROMPTS_FILE, 'r', encoding='utf-8') as f:
-                    return json.load(f)
+                    data = json.load(f)
+                    # Convert new format to old format for the tool to work with
+                    prompts = {}
+                    for key, value in data.items():
+                        if isinstance(value, dict) and 'content' in value:
+                            # New format: {keyword: {'content': content, 'last_updated': date}}
+                            prompts[key] = value['content']
+                        else:
+                            # Old format: {keyword: content}
+                            prompts[key] = value
+                    return prompts
             except (json.JSONDecodeError, IOError) as e:
                 print(f"Error loading prompts file: {e}. Starting with an empty list.")
                 return {}
