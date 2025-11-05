@@ -1,0 +1,18 @@
+{
+  ":kurs": {
+    "content": "Mi smo polaznici kursa AI.",
+    "last_updated": "11.05.2025"
+  },
+  ":testiramo": {
+    "content": "Ovdje stavi neki vaš prompt.\r\nOn se automatski osvježava da bi se mogao odmah primjeniti. Brzina je na nivou.",
+    "last_updated": "11.05.2025"
+  },
+  ":raif": {
+    "content": "Ovaj prompt manager radi sistemski. Nakon što definišete svoje prompte, možete ih koristiti bilo gdje u bilo kojoj aplikaciji na vašem računaru.",
+    "last_updated": "11.05.2025"
+  },
+  ":edis": {
+    "content": "testiramo",
+    "last_updated": "11.05.2025"
+  }
+}
