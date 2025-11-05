@@ -4,6 +4,8 @@ import time
 import pyautogui
 import pyperclip  # Make sure this is installed: pip install pyperclip
 import keyboard  # Make sure this is installed: pip install keyboard
+import threading
+from datetime import datetime
 
 # --- Configuration ---
 # File to store your keywords and replacements
@@ -14,6 +16,9 @@ class RealtimeTextReplacer:
         self.prompts = self.load_prompts()
         self.current_buffer = ""
         self.is_replacing = False  # A flag to prevent the script from triggering itself
+        self.last_reload_time = datetime.now()  # Track the last reload time
+        self.lock = threading.Lock()  # Lock for thread-safe operations
+        self.last_file_mod_time = self._get_file_mod_time()  # Track file modification time
 
     def load_prompts(self) -> dict:
         """Loads keywords and replacements from the JSON file."""
@@ -26,26 +31,35 @@ class RealtimeTextReplacer:
                 return {}
         return {}
 
-    def save_prompts(self, prompts: dict) -> None:
-        """Saves the current keywords and replacements to the JSON file."""
-        try:
-            with open(PROMPTS_FILE, 'w', encoding='utf-8') as f:
-                json.dump(prompts, f, ensure_ascii=False, indent=4)
-        except IOError as e:
-            print(f"Error saving prompts file: {e}")
 
-    def add_prompt(self, keyword: str, content: str):
-        """Adds a new keyword and replacement, then saves to the file."""
-        self.prompts[keyword] = content
-        self.save_prompts(self.prompts)
-        print(f"Added keyword: '{keyword}'")
 
-    def remove_prompt(self, keyword: str):
-        """Removes a keyword, then saves the change."""
-        if keyword in self.prompts:
-            del self.prompts[keyword]
-            self.save_prompts(self.prompts)
-            print(f"Removed keyword: '{keyword}'")
+    def _get_file_mod_time(self):
+        """Returns the modification time of the prompts file, or None if it doesn't exist."""
+        if os.path.exists(PROMPTS_FILE):
+            return os.path.getmtime(PROMPTS_FILE)
+        return None
+
+    def reload_prompts_if_needed(self):
+        """Reloads the prompts from the JSON file if it has been modified."""
+        current_file_mod_time = self._get_file_mod_time()
+        
+        # Check if the file has been modified since the last check
+        if current_file_mod_time and current_file_mod_time != self.last_file_mod_time:
+            print("Detected changes in prompts.json, reloading...")
+            new_prompts = self.load_prompts()
+            # Only update if there are changes in the content
+            if new_prompts != self.prompts:
+                with self.lock:  # Acquire lock when updating prompts
+                    self.prompts = new_prompts
+                print("Prompts reloaded successfully.")
+            self.last_file_mod_time = current_file_mod_time
+        else:
+            # If file hasn't changed, check if 10 seconds have passed to periodically update mod time
+            current_time = datetime.now()
+            if (current_time - self.last_reload_time).seconds >= 10:
+                self.last_reload_time = current_time
+                # Update the stored modification time to catch any updates we might have missed
+                self.last_file_mod_time = self._get_file_mod_time()
 
     def on_key_event(self, event):
         """This function is called every time a key is pressed."""
@@ -74,8 +88,13 @@ class RealtimeTextReplacer:
         if self.is_replacing:
             return
 
+        # Acquire lock when accessing prompts (since reload might update it)
+        with self.lock:
+            # Create a local copy of prompts to minimize lock time
+            local_prompts = dict(self.prompts)
+        
         # Sort keywords by length (longest first) to avoid partial matches
-        sorted_keywords = sorted(self.prompts.keys(), key=len, reverse=True)
+        sorted_keywords = sorted(local_prompts.keys(), key=len, reverse=True)
         
         for keyword in sorted_keywords:
             # The trigger is the keyword itself, followed by a space
@@ -89,14 +108,18 @@ class RealtimeTextReplacer:
         """Replaces the typed keyword with the desired text using your specific sequence."""
         self.is_replacing = True  # Set the flag to block on_key_event
         
-        replacement_text = self.prompts[keyword]
+        # Get the replacement text with lock to prevent changes during replacement
+        with self.lock:
+            replacement_text = self.prompts[keyword]
         
         # 1. Determine total length to delete (keyword + space character)
         total_length = len(keyword) + 1  # +1 for the space character
         
-        # 2. Delete the keyword and space character in one loop
-        for _ in range(total_length):
-            pyautogui.press('backspace')
+        # 2. Delete the keyword and space character quickly using the new method
+        pyautogui.press('backspace', presses=total_length, interval=0.003)
+
+        # 2.5. Add a small delay to ensure all characters are deleted
+        
 
         # 3. Use the clipboard to paste the replacement text for maximum speed
         print("Pasting replacement text from clipboard...")
@@ -113,41 +136,32 @@ class RealtimeTextReplacer:
         print(f"--- Replacement Complete for '{keyword}' ---")
         self.is_replacing = False  # Release the flag
 
-    def stop_listener(self, event):
-        """This function is called when the ESC key is pressed."""
-        if event.name == 'esc' and event.event_type == keyboard.KEY_DOWN:
-            print("\nESC key pressed. Stopping script...")
-            keyboard.unhook_all()
-            os._exit(0)  # Force exit the program
+
 
     def start_monitoring(self):
         """Starts the keyboard listener and waits for keywords."""
         print("--- Text Replacer is now active ---")
         print("Type a keyword followed by a SPACE to trigger a replacement.")
-        print("Press ESC to exit.")
+        print("Press Ctrl+C in this console to exit the program.")
         
         # Hook the keyboard events
         keyboard.hook(self.on_key_event)
-        keyboard.hook(self.stop_listener)
         
-        # Keep the script running
-        keyboard.wait('esc')  # Wait specifically for the ESC key to exit
+        # Keep the script running and reload prompts when file changes
+        try:
+            while True:
+                time.sleep(0.1)  # Small delay to prevent excessive CPU usage
+                self.reload_prompts_if_needed()  # Check for file changes and reload if needed
+        except KeyboardInterrupt:
+            print("\nKeyboardInterrupt received. Stopping script...")
+            keyboard.unhook_all()
+            os._exit(0)  # Force exit the program
 
-def setup_initial_prompts(replacer: RealtimeTextReplacer):
-    """Adds some example prompts if the file is empty."""
-    if not replacer.prompts:
-        print("No prompts found. Adding some examples to 'prompts.json'...")
-        replacer.add_prompt("@email", "my.personal.email@example.com")
-        replacer.add_prompt("@sig", "Best regards,\nYour Name")
-        replacer.add_prompt("syc", "Sincerely,\n\nYour Name\nYour Title")
-        print("Example prompts have been added.")
+
 
 if __name__ == "__main__":
     # Create an instance of our replacer class
     replacer = RealtimeTextReplacer()
-    
-    # Optional: Add example prompts if the JSON file is empty
-    setup_initial_prompts(replacer)
     
     # Start the main monitoring loop
     replacer.start_monitoring()
