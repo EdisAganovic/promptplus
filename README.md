@@ -1,4 +1,4 @@
-# Bosanski Realtime Prompt Replacer
+# GPTPlus - Bosanski Realtime Prompt Replacer
 
 ## Opis
 Alat za upravljanje promptima sa ključnim riječima koje se automatski zamjenjuju u realnom vremenu dok kucate u bilo kojoj aplikaciji.
@@ -7,6 +7,8 @@ Alat za upravljanje promptima sa ključnim riječima koje se automatski zamjenju
 - Definisanje prompta sa ključnim riječima (npr. :prevedi, :sumiraj)
 - Automatska zamjena ključnih riječi dok kucate u bilo kojoj aplikaciji
 - Upravljanje promptima kroz web interfejs (FastAPI)
+- Kompatibilnost sa Gemini AI modelima
+- Mogućnost postavljanja varijabli okoline (API ključeva)
 
 ## Korištenje
 1. Pokrenite UI: `python ui.py`
@@ -31,6 +33,10 @@ Za pokretanje alata:
 ```
 python main.py
 ```
+
+## Konfiguracija
+- Aplikacija koristi `.env` fajl za pohranu API ključeva i varijabli okoline
+- Ako ne postoji `.env` fajl, biće automatski kreiran sa primjerima
 
 ## Napomene
 - Aplikacija mora imati dozvole za praćenje tastature i simulaciju pritiska tipki
