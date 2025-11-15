@@ -9,6 +9,8 @@ Alat za upravljanje promptima sa ključnim riječima koje se automatski zamjenju
 - Upravljanje promptima kroz web interfejs (FastAPI)
 - Kompatibilnost sa Gemini AI modelima
 - Mogućnost postavljanja varijabli okoline (API ključeva)
+- Animirani loading ekran sa "Loading..." tekstom i tačkama pri pokretanju aplikacije
+- Borderless prozor dizajn sa dugmićima za minimizaciju, maksimizaciju i zatvaranje
 
 ## Korištenje
 1. Pokrenite UI: `python ui.py`

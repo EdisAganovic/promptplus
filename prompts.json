@@ -10,5 +10,9 @@
   ":testiramo": {
     "content": "Ovdje stavi neki vaš prompt.\r\nOn se automatski osvježava da bi se mogao odmah primjeniti. Brzina je na nivou.",
     "last_updated": "11.05.2025"
+  },
+  ":bosanac": {
+    "content": "Prevedi mi na bosanski jezik. Ne koristi ćirilicu. Koristi bosansku gramatiku.",
+    "last_updated": "11.06.2025"
   }
 }
