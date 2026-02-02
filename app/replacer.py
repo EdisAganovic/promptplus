@@ -1,22 +1,36 @@
-import json
-import os
+"""
+app/replacer.py - Text Replacement Engine
+==========================================
+Classes:
+- RealtimeTextReplacer: Monitors keyboard, replaces typed keywords with prompts
+  - start_monitoring(): Start keyboard hook loop
+  - stop_monitoring(): Stop and cleanup
+- ReplacerThread(QThread): Runs replacer in background thread
+  - run(): Calls replacer.start_monitoring()
+  - stop(): Calls replacer.stop_monitoring()
+"""
 import time
+import threading
+import keyboard
 import pyautogui
 import pyperclip
-import keyboard
-import threading
+from PyQt6.QtCore import QThread
 
-PROMPTS_FILE = "prompts.json"
+from .utils import PROMPTS_FILE, load_prompts
+import os
+import json
+
 
 class RealtimeTextReplacer:
     def __init__(self):
-        self.prompts = self.load_prompts()
+        self.prompts = self._load_prompts_for_replacer()
         self.current_buffer = ""
         self.is_replacing = False
         self.lock = threading.Lock()
         self.last_file_mod_time = self._get_file_mod_time()
+        self._running = True
 
-    def load_prompts(self):
+    def _load_prompts_for_replacer(self):
         if os.path.exists(PROMPTS_FILE):
             try:
                 with open(PROMPTS_FILE, 'r', encoding='utf-8') as f:
@@ -39,9 +53,8 @@ class RealtimeTextReplacer:
 
     def reload_prompts_if_needed(self):
         current_file_mod_time = self._get_file_mod_time()
-        
         if current_file_mod_time and current_file_mod_time != self.last_file_mod_time:
-            new_prompts = self.load_prompts()
+            new_prompts = self._load_prompts_for_replacer()
             if new_prompts != self.prompts:
                 with self.lock:
                     self.prompts = new_prompts
@@ -50,7 +63,6 @@ class RealtimeTextReplacer:
     def on_key_event(self, event):
         if self.is_replacing or event.event_type != keyboard.KEY_DOWN:
             return
-
         if len(event.name) == 1:
             self.current_buffer += event.name
         elif event.name == 'space':
@@ -58,19 +70,15 @@ class RealtimeTextReplacer:
             self.check_for_replacement()
         elif event.name == 'backspace':
             self.current_buffer = self.current_buffer[:-1]
-            
         if len(self.current_buffer) > 100:
             self.current_buffer = self.current_buffer[-100:]
 
     def check_for_replacement(self):
         if self.is_replacing:
             return
-
         with self.lock:
             local_prompts = dict(self.prompts)
-        
         sorted_keywords = sorted(local_prompts.keys(), key=len, reverse=True)
-        
         for keyword in sorted_keywords:
             trigger_phrase = keyword + ' '
             if self.current_buffer.endswith(trigger_phrase):
@@ -79,38 +87,40 @@ class RealtimeTextReplacer:
 
     def perform_replacement(self, keyword):
         self.is_replacing = True
-        
         with self.lock:
             replacement_text = self.prompts[keyword]
-        
         total_length = len(keyword) + 1
-        
         pyautogui.press('backspace', presses=total_length, interval=0.003)
-
         original_clipboard = pyperclip.paste()
         try:
             pyperclip.copy(replacement_text)
             pyautogui.hotkey('ctrl', 'v')
         finally:
             pyperclip.copy(original_clipboard)
-
         self.current_buffer = ""
         self.is_replacing = False
 
     def start_monitoring(self):
-        print("Text Replacer is now active. Type a keyword followed by SPACE to trigger replacement.")
-        
+        print("Text Replacer is now active.")
         keyboard.hook(self.on_key_event)
-        
-        try:
-            while True:
-                time.sleep(0.1)
-                self.reload_prompts_if_needed()
-        except KeyboardInterrupt:
-            keyboard.unhook_all()
-            print("Text Replacer stopped.")
-            os._exit(0)
+        while self._running:
+            time.sleep(0.1)
+            self.reload_prompts_if_needed()
 
-if __name__ == "__main__":
-    replacer = RealtimeTextReplacer()
-    replacer.start_monitoring()
+    def stop_monitoring(self):
+        self._running = False
+        keyboard.unhook_all()
+        print("Text Replacer stopped.")
+
+
+class ReplacerThread(QThread):
+    """Thread to run the text replacer in background."""
+    def __init__(self, replacer):
+        super().__init__()
+        self.replacer = replacer
+
+    def run(self):
+        self.replacer.start_monitoring()
+
+    def stop(self):
+        self.replacer.stop_monitoring()

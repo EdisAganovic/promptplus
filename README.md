@@ -1,4 +1,4 @@
-# GPTPlus - Bosanski Realtime Prompt Replacer
+# FlowPlus - Bosanski Realtime Prompt Replacer
 
 ## Opis
 Alat za upravljanje promptima sa ključnim riječima koje se automatski zamjenjuju u realnom vremenu dok kucate u bilo kojoj aplikaciji.
@@ -13,12 +13,10 @@ Alat za upravljanje promptima sa ključnim riječima koje se automatski zamjenju
 - Borderless prozor dizajn sa dugmićima za minimizaciju, maksimizaciju i zatvaranje
 
 ## Korištenje
-1. Pokrenite UI: `python ui.py`
-2. Otvorite preglednik na `http://127.0.0.1:8000`
+1. Pokrenite aplikaciju: `python ui.py`
+2. UI će se otvoriti u prozoru (backend na `http://127.0.0.1:8080`)
 3. Dodajte svoje prompte sa ključnim riječima
-4. Pokrenite alat: `python main.py` 
-5. U bilo kojoj aplikaciji, kada ukucate definisanu ključnu riječ (npr. :testiramo) i pritisnete razmaknicu, 
-   tekst će se automatski zamijeniti sa sadržajem prompta
+4. Text replacer se automatski pokreće u pozadini
 
 ## Instalacija
 ```
@@ -26,14 +24,8 @@ uv pip install -r requirements.txt
 ```
 
 ## Pokretanje
-Za pokretanje UI-a:
 ```
 python ui.py
-```
-
-Za pokretanje alata:
-```
-python main.py
 ```
 
 ## Konfiguracija
