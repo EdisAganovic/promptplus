@@ -34,11 +34,14 @@ def load_prompts():
                 elif isinstance(value, dict) and 'content' in value:
                     if 'last_updated' not in value:
                         value['last_updated'] = get_current_date()
+                    if 'tags' not in value or not isinstance(value['tags'], list):
+                        value['tags'] = []
                     prompts[key] = value
                 else:
                     prompts[key] = {
                         'content': value,
-                        'last_updated': get_current_date()
+                        'last_updated': get_current_date(),
+                        'tags': []
                     }
             return prompts
     return {}

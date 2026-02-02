@@ -1,5 +1,5 @@
 """
-GPTPlus - Text Replacement Tool
+TextFlow - Text Replacement Tool
 Entry point for the application.
 """
 import sys
@@ -20,7 +20,7 @@ def main():
     # is_running, existing_pid = check_existing_instances(script_name)
     # if is_running:
     #     print(f"Another instance of the program is already running (PID: {existing_pid}).")
-    #     print("Only one instance of GPTPlus should be running at a time.")
+    #     print("Only one instance of TextFlow should be running at a time.")
     #     sys.exit(0)
 
     global _replacer_thread

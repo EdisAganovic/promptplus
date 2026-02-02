@@ -1,18 +1,34 @@
 {
-  ":elmin": {
-    "content": "Ovaj prompt manager radi sistemski. Nakon što definišete svoje prompte, možete ih koristiti bilo gdje u bilo kojoj aplikaciji na vašem računaru.",
-    "last_updated": "11.05.2025"
-  },
-  ":kurs": {
-    "content": "Mi smo polaznici kursa AI.",
-    "last_updated": "11.05.2025"
-  },
   ":testiramo": {
     "content": "Ovo je proba.",
-    "last_updated": "11.15.2025"
+    "last_updated": "02.02.2026",
+    "tags": [
+      "gemini"
+    ]
+  },
+  ":test": {
+    "content": "testiramo",
+    "last_updated": "02.02.2026",
+    "tags": []
+  },
+  ":proba": {
+    "content": "proba2222",
+    "last_updated": "02.02.2026",
+    "tags": []
+  },
+  ":elmin": {
+    "content": "Ovaj prompt manager radi sistemski. Nakon što definišete svoje prompte, možete ih koristiti bilo gdje u bilo kojoj aplikaciji na vašem računaru.",
+    "last_updated": "02.02.2026",
+    "tags": []
   },
   ":bosanac": {
     "content": "Prevedi mi na bosanski jezik. Ne koristi ćirilicu. Koristi bosansku gramatiku.",
-    "last_updated": "11.06.2025"
+    "last_updated": "02.02.2026",
+    "tags": []
+  },
+  ":kurs": {
+    "content": "Mi smo polaznici kursa AI.",
+    "last_updated": "02.02.2026",
+    "tags": []
   }
 }

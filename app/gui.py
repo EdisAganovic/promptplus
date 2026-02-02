@@ -8,14 +8,16 @@ Classes:
   - Rounded corners, drag-to-move, edge-resize
   - Loading animation while server starts
 """
+import os
 import time
 import threading
 import requests
 import uvicorn
-from PyQt6.QtWidgets import QApplication, QMainWindow, QVBoxLayout, QWidget, QLabel, QHBoxLayout, QPushButton
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget, 
+                             QLabel, QHBoxLayout, QPushButton, QFileDialog)
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtCore import QUrl, QTimer, Qt, QThread, pyqtSignal, QRect
-from PyQt6.QtGui import QRegion, QPainterPath, QColor
+from PyQt6.QtGui import QRegion, QPainterPath, QColor, QIcon
 
 from .api import app
 
@@ -50,10 +52,23 @@ class FastAPIWebBrowser(QMainWindow):
     def __init__(self):
         super().__init__()
         self.port = 8080
-        self.setWindowTitle("GPTPlus - Text Replacement Tool")
-        self.setGeometry(100, 100, 1200, 800)
+        
+        # Set Window Icon
+        root_dir = os.path.dirname(os.path.dirname(__file__))
+        icon_path = os.path.join(root_dir, "icon.ico")
+        if os.path.exists(icon_path):
+            self.setWindowIcon(QIcon(icon_path))
+            
+        self.setWindowTitle("TextFlow - Text Replacement Tool")
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.setMinimumSize(800, 600)
+        
+        # Set geometry and center on screen
+        width, height = 1200, 870
+        screen = QApplication.primaryScreen().availableGeometry()
+        x = (screen.width() - width) // 2
+        y = (screen.height() - height) // 2
+        self.setGeometry(x, y, width, height)
 
         main_widget = QWidget()
         main_layout = QVBoxLayout(main_widget)
@@ -67,7 +82,7 @@ class FastAPIWebBrowser(QMainWindow):
         title_layout = QHBoxLayout(self.title_bar)
         title_layout.setContentsMargins(15, 0, 15, 0)
 
-        app_name = QLabel("GPTPlus - Text Replacement Tool")
+        app_name = QLabel("TextFlow - Text Replacement Tool v0.1")
         app_name.setStyleSheet("color: #e6e6ff; font-weight: bold; font-size: 14px;")
         title_layout.addWidget(app_name)
         title_layout.addStretch()
@@ -145,7 +160,29 @@ class FastAPIWebBrowser(QMainWindow):
     def show_browser(self):
         self.loading_widget.hide()
         self.browser.show()
+        
+        # Connect download requested signal to handle "Save As"
+        self.browser.page().profile().downloadRequested.connect(self.on_download_requested)
+        
         self.browser.load(QUrl(f"http://127.0.0.1:{self.port}"))
+
+    def on_download_requested(self, download):
+        """Handle download requests by showing a native Save File dialog."""
+        suggested_path = download.downloadFileName()
+        
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Prompt Export",
+            suggested_path,
+            "JSON Files (*.json);;All Files (*)"
+        )
+        
+        if file_path:
+            download.setDownloadDirectory(os.path.dirname(file_path))
+            download.setDownloadFileName(os.path.basename(file_path))
+            download.accept()
+        else:
+            download.cancel()
         
     def toggle_maximize(self):
         if self.isMaximized():
@@ -186,6 +223,12 @@ class FastAPIWebBrowser(QMainWindow):
         if on_top: return 'top'
         if on_bottom: return 'bottom'
         return None
+
+    def mouseDoubleClickEvent(self, event):
+        if event.button() == Qt.MouseButton.LeftButton:
+            if self.title_bar.geometry().contains(event.pos()):
+                self.toggle_maximize()
+                event.accept()
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
