@@ -1,5 +1,5 @@
 """
-app/ - TextFlow Application Package
+app/ - PromptPlus Application Package
 ===================================
 Modules:
 - utils.py    : Prompts I/O, token counting, instance check
@@ -7,4 +7,4 @@ Modules:
 - replacer.py : RealtimeTextReplacer, ReplacerThread
 - gui.py      : LoadingThread, FastAPIWebBrowser (Qt GUI)
 """
-# TextFlow App Package
+# PromptPlus App Package

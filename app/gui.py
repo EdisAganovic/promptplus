@@ -14,7 +14,8 @@ import threading
 import requests
 import uvicorn
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget, 
-                             QLabel, QHBoxLayout, QPushButton, QFileDialog)
+                             QLabel, QHBoxLayout, QPushButton, QFileDialog,
+                             QGraphicsDropShadowEffect)
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtCore import QUrl, QTimer, Qt, QThread, pyqtSignal, QRect
 from PyQt6.QtGui import QRegion, QPainterPath, QColor, QIcon
@@ -28,7 +29,11 @@ class LoadingThread(QThread):
     def run(self):
         """Run the FastAPI server in a separate thread."""
         def start_server():
-            uvicorn.run(app, host="127.0.0.1", port=8080, log_level="info")
+            # In frozen noconsole app, stdout/stderr might be None
+            # causing uvicorn default logger to crash
+            config = uvicorn.Config(app, host="127.0.0.1", port=8080, log_config=None)
+            server = uvicorn.Server(config)
+            server.run()
         
         server_thread = threading.Thread(target=start_server, daemon=True)
         server_thread.start()
@@ -54,12 +59,17 @@ class FastAPIWebBrowser(QMainWindow):
         self.port = 8080
         
         # Set Window Icon
-        root_dir = os.path.dirname(os.path.dirname(__file__))
+        import sys
+        if getattr(sys, 'frozen', False):
+            root_dir = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
+        else:
+            root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+            
         icon_path = os.path.join(root_dir, "icon.ico")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
             
-        self.setWindowTitle("TextFlow - Text Replacement Tool")
+        self.setWindowTitle("PromptPlus - Text Replacement Tool")
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.setMinimumSize(800, 600)
         
@@ -70,7 +80,18 @@ class FastAPIWebBrowser(QMainWindow):
         y = (screen.height() - height) // 2
         self.setGeometry(x, y, width, height)
 
+        # Resize edge margin - 12px for 4K reliability
+        self.resize_margin = 12
+        
         main_widget = QWidget()
+        main_widget.setObjectName("mainWidget")
+        main_widget.setStyleSheet("""
+            #mainWidget {
+                background-color: #1a1b27;
+                border: 1px solid #3a3f4b;
+                border-radius: 0px;
+            }
+        """)
         main_layout = QVBoxLayout(main_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -78,38 +99,46 @@ class FastAPIWebBrowser(QMainWindow):
 
         self.title_bar = QWidget()
         self.title_bar.setFixedHeight(40)
-        self.title_bar.setStyleSheet("background-color: #1a1b27; border-top-left-radius: 15px; border-top-right-radius: 15px;")
+        self.title_bar.setStyleSheet("background-color: #1a1b27;")
         title_layout = QHBoxLayout(self.title_bar)
-        title_layout.setContentsMargins(15, 0, 15, 0)
+        title_layout.setContentsMargins(15, 0, 0, 0)
+        title_layout.setSpacing(0) # Flush buttons touch each other
+        
+        # KEY FIX: Force Arrow cursor on title bar to prevent resize cursor bleed-through
+        self.title_bar.setCursor(Qt.CursorShape.ArrowCursor)
+        self.title_bar.setMouseTracking(True)
 
-        app_name = QLabel("TextFlow - Text Replacement Tool v0.1")
+        app_name = QLabel("PromptPlus - Text Replacement Tool v0.1")
         app_name.setStyleSheet("color: #e6e6ff; font-weight: bold; font-size: 14px;")
-        title_layout.addWidget(app_name)
+        title_layout.addWidget(app_name, alignment=Qt.AlignmentFlag.AlignVCenter)
         title_layout.addStretch()
 
         minimize_button = QPushButton("−")
-        minimize_button.setFixedSize(30, 30)
+        minimize_button.setFixedSize(45, 40)
+        minimize_button.setCursor(Qt.CursorShape.PointingHandCursor)
         minimize_button.setStyleSheet("""
-            QPushButton { background-color: #6b7280; color: white; border: none; font-weight: bold; font-size: 16px; border-radius: 4px; }
-            QPushButton:hover { background-color: #4b5563; }
+            QPushButton { background-color: transparent; color: white; border: none; font-size: 20px; border-radius: 0px; }
+            QPushButton:hover { background-color: #3b3f4c; }
         """)
         minimize_button.clicked.connect(self.showMinimized)
         title_layout.addWidget(minimize_button)
 
         self.maximize_button = QPushButton("□")
-        self.maximize_button.setFixedSize(30, 30)
+        self.maximize_button.setFixedSize(45, 40)
+        self.maximize_button.setCursor(Qt.CursorShape.PointingHandCursor)
         self.maximize_button.setStyleSheet("""
-            QPushButton { background-color: #6b7280; color: white; border: none; font-weight: bold; font-size: 16px; border-radius: 4px; }
-            QPushButton:hover { background-color: #4b5563; }
+            QPushButton { background-color: transparent; color: white; border: none; font-size: 16px; border-radius: 0px; padding-bottom: 2px; }
+            QPushButton:hover { background-color: #3b3f4c; }
         """)
         self.maximize_button.clicked.connect(self.toggle_maximize)
         title_layout.addWidget(self.maximize_button)
 
         close_button = QPushButton("✕")
-        close_button.setFixedSize(30, 30)
+        close_button.setFixedSize(45, 40)
+        close_button.setCursor(Qt.CursorShape.PointingHandCursor)
         close_button.setStyleSheet("""
-            QPushButton { background-color: #ef4444; color: white; border: none; font-weight: bold; font-size: 16px; border-radius: 4px; }
-            QPushButton:hover { background-color: #dc2626; }
+            QPushButton { background-color: transparent; color: white; border: none; font-size: 16px; border-radius: 0px; }
+            QPushButton:hover { background-color: #e81123; }
         """)
         close_button.clicked.connect(self.close)
         title_layout.addWidget(close_button)
@@ -125,7 +154,7 @@ class FastAPIWebBrowser(QMainWindow):
         main_layout.addWidget(self.loading_widget)
 
         self.browser = QWebEngineView()
-        self.browser.setStyleSheet("border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;")
+        self.browser.setStyleSheet("border-radius: 0px;")
         self.browser.page().setBackgroundColor(QColor("#1a1b27"))
         self.browser.hide()
         main_layout.addWidget(self.browser)
@@ -135,6 +164,13 @@ class FastAPIWebBrowser(QMainWindow):
         self.resize_direction = None
         self.resize_start_geometry = None
         self.setMouseTracking(True)
+        self.centralWidget().setMouseTracking(True)
+        
+        # Enable recursive mouse tracking for all child widgets
+        self.set_recursive_mouse_tracking(self)
+        
+        # Install event filter on the app to capture all mouse move events
+        QApplication.instance().installEventFilter(self)
 
         self.loading_timer = QTimer(self)
         self.dots = 0
@@ -145,7 +181,61 @@ class FastAPIWebBrowser(QMainWindow):
         self.server_thread.server_ready.connect(self.on_server_ready)
         self.server_thread.start()
         
-        self.create_rounded_mask(15)
+    def set_recursive_mouse_tracking(self, widget):
+        """Enable mouse tracking for a widget and all its children recursively."""
+        widget.setMouseTracking(True)
+        for child in widget.findChildren(QWidget):
+            child.setMouseTracking(True)
+
+    def eventFilter(self, obj, event):
+        """Global event filter to capture events from child widgets for window management."""
+        from PyQt6.QtCore import QEvent
+        
+        # Mouse Move: Handle resize cursor updates and active resizing
+        if event.type() == QEvent.Type.MouseMove:
+            pos = self.mapFromGlobal(event.globalPosition().toPoint())
+            
+            if self.is_resizing:
+                self.resize_window(event)
+                return True
+            elif self.old_pos is not None:
+                # Handle dragging if title bar didn't catch it
+                delta = event.globalPosition().toPoint() - self.old_pos
+                self.move(self.pos() + delta)
+                self.old_pos = event.globalPosition().toPoint()
+                return True
+            elif not self.isMaximized():
+                if self.rect().contains(pos):
+                    self.update_resize_cursor(pos)
+        
+        # Mouse Press: Detect start of resize or drag near edges
+        elif event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton:
+            pos = self.mapFromGlobal(event.globalPosition().toPoint())
+            
+            # 1. Edge Resize check (Highest Priority)
+            if not self.isMaximized():
+                direction = self.get_resize_direction(pos)
+                if direction:
+                    self.start_resizing(event, direction)
+                    return True
+            
+            # 2. Title Bar Drag check
+            if self.title_bar.geometry().contains(pos):
+                # Don't intercept if clicking buttons (they are nested in the title bar)
+                child = self.childAt(pos)
+                if child and isinstance(child, QPushButton):
+                    return False
+                    
+                self.old_pos = event.globalPosition().toPoint()
+                return True
+                
+        # Mouse Release: Reset states
+        elif event.type() == QEvent.Type.MouseButtonRelease:
+            if self.is_resizing or self.old_pos is not None:
+                self.mouseReleaseEvent(event)
+                return True
+                
+        return super().eventFilter(obj, event)
 
     def update_loading_animation(self):
         self.dots = (self.dots + 1) % 4
@@ -160,6 +250,9 @@ class FastAPIWebBrowser(QMainWindow):
     def show_browser(self):
         self.loading_widget.hide()
         self.browser.show()
+        
+        # Refresh mouse tracking for the now visible browser and its children
+        self.set_recursive_mouse_tracking(self.browser)
         
         # Connect download requested signal to handle "Save As"
         self.browser.page().profile().downloadRequested.connect(self.on_download_requested)
@@ -192,28 +285,22 @@ class FastAPIWebBrowser(QMainWindow):
 
     def on_window_state_changed(self):
         if self.isMaximized():
-            self.setMask(QRegion())
             self.maximize_button.setText("❐")
         else:
-            self.create_rounded_mask(15)
             self.maximize_button.setText("□")
+        self.setMask(QRegion()) # Ensure sharp edges always
 
-    def create_rounded_mask(self, radius):
-        QTimer.singleShot(0, lambda: self.apply_rounded_mask(radius))
-        
-    def apply_rounded_mask(self, radius):
-        from PyQt6.QtCore import QRectF
-        path = QPainterPath()
-        path.addRoundedRect(QRectF(self.rect()), radius, radius)
-        self.setMask(QRegion(path.toFillPolygon().toPolygon()))
+
 
     def get_resize_direction(self, pos):
-        margin = 10
+        margin = self.resize_margin
+        
         on_left = pos.x() < margin
         on_right = pos.x() > self.width() - margin
         on_top = pos.y() < margin
         on_bottom = pos.y() > self.height() - margin
-
+        
+        # Priority 1: Check corners and edges for resize triggers
         if on_left and on_top: return 'top_left'
         if on_right and on_top: return 'top_right'
         if on_left and on_bottom: return 'bottom_left'
@@ -222,6 +309,16 @@ class FastAPIWebBrowser(QMainWindow):
         if on_right: return 'right'
         if on_top: return 'top'
         if on_bottom: return 'bottom'
+
+        # Priority 2: Only if not at edge, check if we are in the title bar area
+        child = self.childAt(pos)
+        if child is not None:
+             curr = child
+             while curr is not None and curr is not self:
+                 if curr is self.title_bar:
+                     return None
+                 curr = curr.parent()
+        
         return None
 
     def mouseDoubleClickEvent(self, event):
@@ -232,15 +329,19 @@ class FastAPIWebBrowser(QMainWindow):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            if self.title_bar.geometry().contains(event.pos()):
-                self.old_pos = event.globalPosition().toPoint()
-                event.accept()
-                return
+            # Check for resize FIRST
             if not self.isMaximized():
                 direction = self.get_resize_direction(event.pos())
                 if direction:
                     self.start_resizing(event, direction)
                     event.accept()
+                    return
+
+            # Only then check for dragging
+            if self.title_bar.geometry().contains(event.pos()):
+                self.old_pos = event.globalPosition().toPoint()
+                event.accept()
+                return
 
     def start_resizing(self, event, direction):
         self.is_resizing = True
@@ -249,14 +350,16 @@ class FastAPIWebBrowser(QMainWindow):
         self.resize_start_geometry = self.geometry()
 
     def mouseMoveEvent(self, event):
+        # Update cursor proactively to show resize pointers at edges
+        if not self.is_resizing and self.old_pos is None:
+            self.update_resize_cursor(event.pos())
+            
         if self.old_pos is not None and not self.is_resizing:
             delta = event.globalPosition().toPoint() - self.old_pos
             self.move(self.pos() + delta)
             self.old_pos = event.globalPosition().toPoint()
         elif self.is_resizing:
             self.resize_window(event)
-        else:
-            self.update_resize_cursor(event.pos())
 
     def resize_window(self, event):
         if not self.is_resizing or not self.resize_start_geometry:
@@ -285,23 +388,38 @@ class FastAPIWebBrowser(QMainWindow):
             self.is_resizing = False
             self.resize_direction = None
             self.resize_start_geometry = None
+            while QApplication.overrideCursor():
+                QApplication.restoreOverrideCursor()
             self.unsetCursor()
 
     def update_resize_cursor(self, pos):
         if self.isMaximized():
-            self.unsetCursor()
+            if QApplication.overrideCursor(): QApplication.restoreOverrideCursor()
+            self.setCursor(Qt.CursorShape.ArrowCursor)
             return
+
         direction = self.get_resize_direction(pos)
-        if direction in ('top_left', 'bottom_right'):
-            self.setCursor(Qt.CursorShape.SizeFDiagCursor)
-        elif direction in ('top_right', 'bottom_left'):
-            self.setCursor(Qt.CursorShape.SizeBDiagCursor)
-        elif direction in ('left', 'right'):
-            self.setCursor(Qt.CursorShape.SizeHorCursor)
-        elif direction in ('top', 'bottom'):
-            self.setCursor(Qt.CursorShape.SizeVerCursor)
+        cursor_map = {
+            'top_left': Qt.CursorShape.SizeFDiagCursor,
+            'bottom_right': Qt.CursorShape.SizeFDiagCursor,
+            'top_right': Qt.CursorShape.SizeBDiagCursor,
+            'bottom_left': Qt.CursorShape.SizeBDiagCursor,
+            'left': Qt.CursorShape.SizeHorCursor,
+            'right': Qt.CursorShape.SizeHorCursor,
+            'top': Qt.CursorShape.SizeVerCursor,
+            'bottom': Qt.CursorShape.SizeVerCursor
+        }
+
+        if direction in cursor_map:
+            new_cursor = cursor_map[direction]
+            if QApplication.overrideCursor() and QApplication.overrideCursor().shape() == new_cursor:
+                return # Already set
+            QApplication.setOverrideCursor(new_cursor)
         else:
-            self.unsetCursor()
+            # Not in resize zone - restore default behavior
+            while QApplication.overrideCursor():
+                QApplication.restoreOverrideCursor()
+            self.setCursor(Qt.CursorShape.ArrowCursor)
 
     def changeEvent(self, event):
         if event.type() == event.Type.WindowStateChange:
@@ -310,5 +428,4 @@ class FastAPIWebBrowser(QMainWindow):
 
     def resizeEvent(self, event):
         super().resizeEvent(event)
-        if not self.isMaximized():
-            self.apply_rounded_mask(15)
+        # Mask removed to allow edge resize detection

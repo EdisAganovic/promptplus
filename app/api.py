@@ -19,13 +19,24 @@ from .utils import load_prompts, save_prompts, get_current_date, count_tokens
 app = FastAPI()
 
 # Static files
-static_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
+import sys
+
+# Determine base path for resources
+if getattr(sys, 'frozen', False):
+    # Running in a PyInstaller bundle
+    base_dir = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
+else:
+    # Running in a normal Python environment
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Static files
+static_dir = os.path.join(base_dir, "static")
 if not os.path.exists(static_dir):
     os.makedirs(static_dir)
 app.mount("/static", StaticFiles(directory=static_dir), name="static")
 
 # Templates
-templates_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
+templates_dir = os.path.join(base_dir, "templates")
 if not os.path.exists(templates_dir):
     os.makedirs(templates_dir)
 templates = Jinja2Templates(directory=templates_dir)
@@ -33,7 +44,7 @@ templates = Jinja2Templates(directory=templates_dir)
 
 @app.get("/favicon.ico")
 async def favicon():
-    icon_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "icon.ico")
+    icon_path = os.path.join(base_dir, "icon.ico")
     if os.path.exists(icon_path):
         return FileResponse(icon_path)
     return {"error": "File not found"}
@@ -104,7 +115,7 @@ async def update_prompt(old_keyword: str, keyword: str = Form(...), content: str
 async def export_prompts():
     from .utils import PROMPTS_FILE
     if os.path.exists(PROMPTS_FILE):
-        return FileResponse(PROMPTS_FILE, media_type='application/json', filename="textflow_prompts.json")
+        return FileResponse(PROMPTS_FILE, media_type='application/json', filename="promptovi.json")
     return {"error": "File not found"}
 
 

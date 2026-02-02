@@ -13,7 +13,18 @@ import json
 import psutil
 from datetime import datetime
 
-PROMPTS_FILE = "prompts.json"
+import sys
+
+# Determine base path
+if getattr(sys, 'frozen', False):
+    # For user data like prompts.json, we should likely use the executable directory
+    # NOT _MEIPASS (which is temp/read-only in onefile, or hidden in onedir)
+    # In onedir, sys.executable is inside the dir, so dirname is correct.
+    base_dir = os.path.dirname(sys.executable)
+else:
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+PROMPTS_FILE = os.path.join(base_dir, "prompts.json")
 
 
 def get_current_date():

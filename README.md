@@ -1,4 +1,4 @@
-# TextFlow - Bosanski Realtime Prompt Replacer
+# PromptPlus - Bosanski Realtime Prompt Replacer
 
 ## Opis
 Alat za upravljanje promptima sa ključnim riječima koje se automatski zamjenjuju u realnom vremenu dok kucate u bilo kojoj aplikaciji.

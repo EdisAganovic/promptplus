@@ -1,544 +1,51 @@
 <!DOCTYPE html>
 <html lang="bs">
+<script>
+    // Load theme before page renders to prevent flash
+    (function () {
+        const theme = localStorage.getItem('promptplus-theme') || 'light';
+        document.documentElement.setAttribute('data-theme', theme);
+    })();
+</script>
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TextFlow</title>
+    <title>PromptPlus</title>
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root {
-            --bg-primary: #0f0f17;
-            --bg-secondary: #1a1b27;
-            --bg-tertiary: #232735;
-            --bg-card: #1e1f2e;
-            --text-primary: #e6e6ff;
-            --text-secondary: #a9a9cc;
-            --accent-primary: #6366f1;
-            --accent-secondary: #8b5cf6;
-            --accent-tertiary: #ec4899;
-            --border-color: #343543;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --info: #3b82f6;
-        }
-
-        /* Custom Scrollbar Styles */
-        ::-webkit-scrollbar {
-            width: 10px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--bg-primary);
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--bg-tertiary);
-            border-radius: 5px;
-            border: 2px solid var(--bg-primary);
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--accent-primary);
-        }
-
-        body {
-            background-color: var(--bg-primary);
-            color: var(--text-primary);
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            min-height: 100vh;
-        }
-
-        .navbar {
-            background-color: rgba(26, 27, 39, 0.95) !important;
-            backdrop-filter: blur(10px);
-            border-bottom: 1px solid var(--border-color);
-            padding-top: 0.8rem !important;
-            padding-bottom: 0.8rem !important;
-        }
-
-        /* Wide Mode Container */
-        .container {
-            max-width: 1600px !important;
-            transition: max-width 0.3s ease;
-        }
-
-        @media (min-width: 1400px) {
-            .container {
-                padding-left: 2rem;
-                padding-right: 2rem;
-            }
-        }
-
-        .navbar-brand {
-            font-weight: 700;
-            letter-spacing: -0.5px;
-            display: flex;
-            align-items: center;
-        }
-
-        .card {
-            background-color: rgba(30, 31, 46, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            overflow: hidden;
-        }
-
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
-            border-color: var(--accent-primary);
-            background-color: rgba(30, 31, 46, 0.85);
-        }
-
-        .card-header {
-            background: rgba(255, 255, 255, 0.03);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 16px 16px 0 0 !important;
-            font-weight: 600;
-            padding: 1rem 1.5rem;
-        }
-
-        .btn {
-            border-radius: 10px;
-            font-weight: 500;
-            padding: 0.5rem 1rem;
-            transition: all 0.2s ease;
-        }
-
-        .btn-primary {
-            background-color: var(--accent-primary);
-            border: none;
-        }
-
-        .btn-primary:hover {
-            background-color: var(--accent-secondary);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-        }
-
-        .btn-danger {
-            background-color: var(--danger);
-            border: none;
-        }
-
-        .btn-danger:hover {
-            background-color: #dc2626;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
-        }
-
-        .btn-info {
-            background-color: var(--info);
-            color: white !important;
-            border: none;
-        }
-
-        .btn-info:hover {
-            background-color: #2563eb;
-            color: white !important;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-        }
-
-        .btn-success {
-            background-color: var(--success);
-            color: white !important;
-            border: none;
-        }
-
-        .btn-success:hover {
-            background-color: #059669;
-            color: white !important;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
-        }
-
-        .btn-outline-light {
-            border-color: var(--border-color);
-            color: var(--text-primary);
-        }
-
-        .btn-outline-light:hover {
-            background-color: var(--bg-tertiary);
-        }
-
-        .form-control,
-        .form-select {
-            background-color: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            border-radius: 10px;
-            padding: 0.75rem 1rem;
-        }
-
-        .form-control:focus,
-        .form-select:focus {
-            background-color: var(--bg-tertiary);
-            border-color: var(--accent-primary);
-            color: var(--text-primary);
-            box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.25);
-        }
-
-        .form-control::placeholder {
-            color: var(--text-secondary);
-            opacity: 0.7;
-        }
-
-        .list-group-item {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-        }
-
-        .list-group-item:hover {
-            background-color: var(--bg-tertiary);
-        }
-
-        .modal-content {
-            background-color: var(--bg-secondary);
-            color: var(--text-primary);
-            border-radius: 16px;
-            border: 1px solid var(--border-color);
-        }
-
-        .modal-header {
-            border-bottom: 1px solid var(--border-color);
-            padding: 1.25rem 1.5rem;
-        }
-
-        .modal-body {
-            padding: 1.5rem;
-        }
-
-        .modal-footer {
-            border-top: 1px solid var(--border-color);
-            padding: 1rem 1.5rem;
-        }
-
-        .prompt-keyword {
-            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-            color: white;
-            padding: 0.3rem 0.8rem;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 0.9rem;
-            display: inline-block;
-            letter-spacing: 0.3px;
-            max-width: 180px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            vertical-align: middle;
-        }
-
-        .empty-state {
-            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
-            border: 2px dashed var(--border-color);
-            border-radius: 20px;
-            padding: 4rem 2rem;
-            text-align: center;
-            margin: 3rem 0;
-        }
-
-        .stats-card {
-            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
-        }
-
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: var(--bg-secondary);
-            border-radius: 4px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: var(--accent-primary);
-            border-radius: 4px;
-        }
-
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: var(--accent-secondary);
-        }
-
-        .prompt-expander {
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .prompt-expander:hover {
-            background-color: var(--bg-tertiary) !important;
-        }
-
-        .section-title {
-            position: relative;
-            display: inline-block;
-            margin-bottom: 1.5rem;
-        }
-
-        .section-title:after {
-            content: '';
-            position: absolute;
-            bottom: -8px;
-            left: 0;
-            width: 50px;
-            height: 3px;
-            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
-            border-radius: 3px;
-        }
-
-        .dropdown-menu {
-            background-color: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 0.5rem 0;
-        }
-
-        .dropdown-item {
-            color: var(--text-primary);
-            padding: 0.5rem 1.2rem;
-            transition: all 0.2s ease;
-        }
-
-        .dropdown-item:hover {
-            background-color: var(--bg-secondary);
-        }
-
-        .badge {
-            border-radius: 20px;
-            padding: 0.3rem 0.7rem;
-            font-weight: 500;
-        }
-
-        .badge-primary {
-            background-color: var(--accent-primary);
-        }
-
-        .badge-secondary {
-            background-color: var(--bg-tertiary);
-            color: var(--text-secondary);
-        }
-
-        .input-group-text {
-            background-color: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-        }
-
-        .table {
-            color: var(--text-primary);
-        }
-
-        .table th {
-            border-top: none;
-            color: var(--text-secondary);
-        }
-
-        .table td {
-            border-top: 1px solid var(--border-color);
-        }
-
-        .toast {
-            background-color: var(--bg-card);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-        }
-
-        .toast-header {
-            background-color: var(--bg-tertiary);
-            border-bottom: 1px solid var(--border-color);
-            color: var(--text-primary);
-        }
-
-        .link-light {
-            color: var(--text-primary);
-        }
-
-        .link-light:hover {
-            color: var(--accent-primary);
-        }
-
-        .form-label {
-            font-weight: 800;
-            color: var(--text-primary);
-        }
-
-        .card-body {
-            color: var(--text-primary);
-        }
-
-        .card-text {
-            color: var(--text-primary) !important;
-        }
-
-        .action-buttons {
-            display: flex;
-            gap: 0.25rem;
-        }
-
-        .action-buttons .btn {
-            padding: 0.25rem 0.5rem;
-            border-radius: 8px;
-        }
-
-        .action-buttons .btn-outline-light:hover {
-            background-color: var(--success) !important;
-            border-color: var(--success) !important;
-        }
-
-        .btn-cancel:hover {
-            background-color: var(--danger) !important;
-            border-color: var(--danger) !important;
-            color: white !important;
-        }
-
-        .card-footer {
-            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-tertiary));
-            border-top: 1px solid var(--border-color);
-            border-radius: 0 0 16px 16px !important;
-        }
-
-        .shadow-sm {
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2) !important;
-        }
-
-        .shadow {
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
-        }
-
-        .shadow-lg {
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
-        }
-
-        .text-muted {
-            color: var(--text-secondary) !important;
-        }
-
-        .btn-sm {
-            padding: 0.25rem 0.5rem;
-            font-size: 0.875rem;
-        }
-
-        .btn-light {
-            background-color: var(--bg-tertiary);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-        }
-
-        .btn-light:hover {
-            background-color: var(--bg-secondary);
-        }
-
-        .bg-light {
-            background-color: var(--bg-tertiary) !important;
-        }
-
-        .text-primary {
-            color: var(--accent-primary) !important;
-        }
-
-        .border {
-            border: 1px solid var(--border-color) !important;
-        }
-
-        .rounded {
-            border-radius: 12px !important;
-        }
-
-        .rounded-pill {
-            border-radius: 50px !important;
-        }
-
-        .d-grid {
-            gap: 0.75rem;
-        }
-
-        .container {
-            padding-top: 0.2rem;
-            padding-bottom: 0.2rem;
-        }
-
-        .row {
-            margin-top: 0 !important;
-        }
-
-        .search-container {
-            background-color: var(--bg-tertiary);
-            border-radius: 12px;
-            padding: 1rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid var(--border-color);
-        }
-
-        .tag-chip {
-            cursor: pointer;
-            transition: all 0.2s ease;
-            font-size: 0.75rem;
-            margin: 0.2rem;
-            border: 1px solid transparent;
-            border-radius: 8px;
-        }
-
-        .tag-chip:hover {
-            border-color: var(--accent-primary);
-            transform: scale(1.05);
-        }
-
-        .tag-chip.active {
-            background-color: var(--accent-primary) !important;
-            color: white !important;
-            box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
-        }
-
-        .card-tags {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.4rem;
-            margin-top: 0.75rem;
-        }
-
-        .tag-badge {
-            font-size: 0.7rem;
-            padding: 0.2rem 0.6rem;
-            background-color: rgba(99, 102, 241, 0.15);
-            color: var(--accent-primary);
-            border: 1px solid rgba(99, 102, 241, 0.3);
-            border-radius: 8px;
-            max-width: 120px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: inline-block;
-            vertical-align: middle;
-        }
-    </style>
+    <link rel="stylesheet" href="/static/style.css">
 </head>
 
 <body class="d-flex flex-column min-vh-100">
-    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="text-center">
+            <div class="spinner-border text-primary mb-3" role="status"></div>
+            <div class="h5 fw-bold">PromptPlus Loading...</div>
+        </div>
+    </div>
+
+    <nav class="navbar navbar-expand-lg sticky-top">
         <div class="container">
-            <a class="navbar-brand d-flex align-items-center" href="#">
-                <i class="fas fa-globe me-2 fa-lg" style="color: var(--accent-primary);"></i>
-                <span class="fw-bold">Text <span style="color: var(--accent-primary);">Flow</span></span>
+            <a class="navbar-brand d-flex align-items-center fs-4" href="#" style="color: var(--text-primary);">
+                <i class="fas fa-bolt me-2" style="color: var(--accent-primary); font-size: 1.5rem;"></i>
+                <span class="fw-black">Prompt<span style="color: var(--accent-primary);">Plus</span></span>
             </a>
             <div class="d-flex align-items-center gap-2">
-                <a href="/export" class="btn btn-info" title="Export as JSON">
+                <a href="/export" class="btn btn-nav-action" title="Export as JSON">
                     <i class="fas fa-file-export me-1"></i> Export
                 </a>
-                <button class="btn btn-success" type="button" data-bs-toggle="modal" data-bs-target="#importModal"
+                <button class="btn btn-nav-action" type="button" data-bs-toggle="modal" data-bs-target="#importModal"
                     title="Import from JSON">
                     <i class="fas fa-file-import me-1"></i> Import
                 </button>
-                <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#addPromptModal">
-                    <i class="fas fa-plus me-2"></i> Dodaj
+                <button class="btn btn-accent" type="button" data-bs-toggle="modal" data-bs-target="#addPromptModal">
+                    <i class="fas fa-plus me-1"></i> Dodaj
+                </button>
+                <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+                    <i class="fas fa-moon"></i>
+                    <i class="fas fa-sun"></i>
                 </button>
             </div>
         </div>
@@ -553,39 +60,35 @@
                         <div class="col-12">
                             <!-- Search Container -->
                             <div class="search-container">
-                                <div class="input-group mb-3">
-                                    <span class="input-group-text bg-transparent border-0">
-                                        <i class="fas fa-search text-muted"></i>
-                                    </span>
-                                    <input type="text" id="searchInput" class="form-control bg-transparent border-0"
-                                        placeholder="Pretraga po ključnoj riječi ili sadržaju...">
-                                    <button class="btn btn-outline-light border-0" type="button" id="searchClear">
+                                <div class="search-input-wrapper">
+                                    <i class="fas fa-search search-icon"></i>
+                                    <input type="text" id="searchInput" class="search-input"
+                                        placeholder="Pretraži promptove">
+                                    <button class="search-clear" type="button" id="searchClear">
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </div>
-                                <div id="tagFilters" class="d-flex flex-wrap align-items-center">
-                                    <span class="text-muted small me-2"><i class="fas fa-filter me-1"></i>
-                                        Filteri:</span>
-                                    <span class="tag-chip badge bg-tertiary text-secondary p-2 px-3 active"
-                                        data-tag="all">Sve</span>
-                                    {% for tag in all_tags %}
-                                    <span class="tag-chip badge bg-tertiary text-secondary p-2 px-3"
-                                        data-tag="{{ tag }}">{{ tag }}</span>
-                                    {% endfor %}
-                                </div>
                             </div>
-
-
+                            <div id="tagFilters" class="d-flex flex-wrap align-items-center">
+                                <span class="text-muted small me-2"><i class="fas fa-filter me-1"></i>
+                                    Filteri:</span>
+                                <span class="tag-chip badge bg-tertiary text-secondary p-2 px-3 active"
+                                    data-tag="all">Sve</span>
+                                {% for tag in all_tags %}
+                                <span class="tag-chip badge bg-tertiary text-secondary p-2 px-3" data-tag="{{ tag }}">{{
+                                    tag }}</span>
+                                {% endfor %}
+                            </div>
                         </div>
                     </div>
 
                     {% if prompts %}
-                    <div class="row g-4" id="promptsContainer">
+                    <div class="masonry-grid" id="promptsContainer">
                         {% for keyword, content in prompts.items() %}
                         {% set prompt_data = content %}
-                        <div class="col-md-6 col-lg-4 col-xl-3 col-xxl-2 prompt-item" data-keyword="{{ keyword }}"
+                        <div class="masonry-item prompt-item" data-keyword="{{ keyword }}"
                             data-content="{{ prompt_data.content }}" data-tags="{{ prompt_data.tags|join(',') }}">
-                            <div class="card h-100">
+                            <div class="card card-accent">
                                 <div class="card-header d-flex justify-content-between align-items-center">
                                     <div class="prompt-keyword">{{ keyword }}</div>
                                     <div class="action-buttons">
@@ -593,26 +96,28 @@
                                             data-bs-toggle="modal" data-bs-target="#editPromptModal{{ loop.index }}">
                                             <i class="fas fa-edit"></i>
                                         </button>
-                                        <a href="/delete/{{ keyword }}" class="btn btn-sm btn-outline-danger">
+                                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-confirm"
+                                            data-keyword="{{ keyword }}" data-url="/delete/{{ keyword }}">
                                             <i class="fas fa-trash"></i>
-                                        </a>
+                                        </button>
                                     </div>
                                 </div>
                                 <div class="card-body">
                                     <p class="card-text">{{ prompt_data.content }}</p>
                                     {% if prompt_data.tags %}
-                                    <div class="card-tags">
+                                    <div class="mt-2 text-wrap">
                                         {% for tag in prompt_data.tags %}
-                                        <span class="tag-badge"><i class="fas fa-tag me-1"></i>{{ tag }}</span>
+                                        <span class="badge bg-soft-blue text-primary me-1 py-1 px-2"
+                                            style="font-size: 0.75rem; background: var(--bg-tertiary);"><i
+                                                class="fas fa-tag me-1"></i>{{ tag }}</span>
                                         {% endfor %}
                                     </div>
                                     {% endif %}
                                 </div>
-                                <div class="card-footer text-center">
-                                    <small class="text-muted">
-                                        <i class="fas fa-calendar me-1"></i> Last Updated: {{ prompt_data.last_updated
-                                        }}
-                                    </small>
+                                <div class="card-footer text-muted d-flex justify-content-between align-items-center"
+                                    style="font-size: 0.75rem; border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.02);">
+                                    <span><i class="far fa-calendar-alt me-1"></i>{{ prompt_data.date or '02.02.2026'
+                                        }}</span>
                                 </div>
                             </div>
                         </div>
@@ -623,7 +128,7 @@
                                 <div class="modal-content">
                                     <div class="modal-header">
                                         <h5 class="modal-title">Uredi prompt</h5>
-                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"
                                             aria-label="Close"></button>
                                     </div>
                                     <form method="post" action="/update/{{ keyword }}">
@@ -635,7 +140,7 @@
                                                     id="editKeyword{{ loop.index }}" name="keyword"
                                                     value="{{ keyword[1:] if keyword.startswith(':') else keyword }}"
                                                     required>
-                                                <div class="form-text text-white">Znak : se automatski dodaje.</div>
+                                                <div class="form-text text-muted">Znak : se automatski dodaje.</div>
                                             </div>
                                             <div class="mb-4">
                                                 <label for="editContent{{ loop.index }}" class="form-label">Sadržaj
@@ -648,14 +153,14 @@
                                                 <label for="editTags{{ loop.index }}" class="form-label">Tagovi</label>
                                                 <input type="text" class="form-control" id="editTags{{ loop.index }}"
                                                     name="tags" value="{{ prompt_data.tags|join(', ') }}"
-                                                    placeholder="work, social, code...">
-                                                <div class="form-text text-white-50">Odvojite tagove zarezima.</div>
+                                                    placeholder="posao, privatno, kod...">
+                                                <div class="form-text text-muted">Odvojite tagove zarezima.</div>
                                             </div>
                                         </div>
                                         <div class="modal-footer">
                                             <button type="button" class="btn btn-outline-light btn-cancel"
                                                 data-bs-dismiss="modal">Odustani</button>
-                                            <button type="submit" class="btn btn-primary">Sačuvaj izmjene</button>
+                                            <button type="submit" class="btn btn-accent">Sačuvaj izmjene</button>
                                         </div>
                                     </form>
                                 </div>
@@ -668,9 +173,9 @@
                         <div class="mb-4">
                             <i class="fas fa-inbox fa-5x text-muted" style="opacity: 0.3;"></i>
                         </div>
-                        <h4 class="mb-3">Nema dodanih prompta</h4>
-                        <p class="text-muted mb-4">Dodajte svoj prvi prompt da biste počeli koristiti TextFlow</p>
-                        <button class="btn btn-primary btn-lg px-4 py-2" data-bs-toggle="modal"
+                        <h4 class="mb-3">Nema dodanih promptova</h4>
+                        <p class="text-muted mb-4">Dodajte svoj prvi prompt da biste počeli koristiti PromptPlus</p>
+                        <button class="btn btn-accent btn-lg px-4 py-2" data-bs-toggle="modal"
                             data-bs-target="#addPromptModal">
                             <i class="fas fa-plus me-2"></i> Dodaj
                         </button>
@@ -680,31 +185,31 @@
             </div>
         </div>
     </div>
+    </div>
 
     <!-- Import Modal -->
     <div class="modal fade" id="importModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Importuj prompte</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+                    <h5 class="modal-title">Importuj promptove</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form method="post" action="/import" enctype="multipart/form-data">
                     <div class="modal-body">
                         <div class="mb-3">
                             <label for="importFile" class="form-label">JSON fajl</label>
                             <input type="file" id="importFile" name="file" class="form-control" accept=".json" required>
-                            <div class="form-text text-white-50 mt-2">
-                                <i class="fas fa-exclamation-triangle me-1 text-warning"></i>
-                                Pažnja: Ovo će <strong>zamijeniti</strong> sve vaše trenutne prompte.
+                            <div class="form-text text-danger mt-2">
+                                <i class="fas fa-exclamation-triangle me-1"></i>
+                                Pažnja: Ovo će <strong>zamijeniti</strong> sve vaše trenutne promptove.
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-light btn-cancel"
                             data-bs-dismiss="modal">Odustani</button>
-                        <button type="submit" class="btn btn-primary">Importuj</button>
+                        <button type="submit" class="btn btn-accent">Importuj</button>
                     </div>
                 </form>
             </div>
@@ -717,8 +222,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title">Dodaj novi prompt</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
-                        aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form method="post" action="/add">
                     <div class="modal-body">
@@ -726,7 +230,7 @@
                             <label for="keyword" class="form-label">Ključna riječ</label>
                             <input type="text" class="form-control form-control-lg" id="keyword" name="keyword"
                                 placeholder="imeprompta" required>
-                            <div class="form-text text-white">Znak : se automatski dodaje.</div>
+                            <div class="form-text text-muted">Znak : se automatski dodaje.</div>
                         </div>
                         <div class="mb-4">
                             <label for="content" class="form-label">Sadržaj prompta</label>
@@ -736,16 +240,38 @@
                         <div class="mb-0">
                             <label for="tags" class="form-label">Tagovi</label>
                             <input type="text" class="form-control" id="tags" name="tags"
-                                placeholder="npr. work, social, code">
-                            <div class="form-text text-white-50">Odvojite tagove zarezima.</div>
+                                placeholder="npr. posao, privatno, kod">
+                            <div class="form-text text-muted">Odvojite tagove zarezima.</div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-light btn-cancel"
                             data-bs-dismiss="modal">Odustani</button>
-                        <button type="submit" class="btn btn-primary">Dodaj prompt</button>
+                        <button type="submit" class="btn btn-accent">Dodaj prompt</button>
                     </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg"
+                style="background-color: #ffffff; border: 1px solid #dee2e6 !important;">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold text-dark">Potvrda brisanja</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <p class="mb-0 text-dark">Da li ste sigurni da želite obrisati prompt <span id="deletePromptKeyword"
+                            class="fw-bold text-danger"></span>? Ova radnja se ne
+                        može poništiti.</p>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Odustani</button>
+                    <a id="confirmDeleteBtn" href="#" class="btn btn-danger px-4">Obriši</a>
+                </div>
             </div>
         </div>
     </div>
@@ -755,7 +281,7 @@
         {% if message %}
         <div id="toastNotification" class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="toast-header">
-                <strong class="me-auto">Flow Plus</strong>
+                <strong class="me-auto">PromptPlus</strong>
                 <small>Sada</small>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"
                     aria-label="Close"></button>
@@ -829,7 +355,27 @@
 
         // Focus search on load
         window.addEventListener('load', () => {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                overlay.classList.add('fade-out');
+                setTimeout(() => overlay.remove(), 500);
+            }
             document.getElementById('searchInput').focus();
+        });
+
+        // Delete Confirmation Logic
+        const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
+        const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
+        const deleteKeywordSpan = document.getElementById('deletePromptKeyword');
+
+        document.querySelectorAll('.btn-delete-confirm').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const keyword = this.getAttribute('data-keyword');
+                const url = this.getAttribute('data-url');
+                deleteKeywordSpan.textContent = keyword;
+                confirmDeleteBtn.href = url;
+                deleteModal.show();
+            });
         });
 
         // Close modal when form is submitted and redirect
@@ -845,6 +391,16 @@
                     });
                 }, 500);
             });
+        });
+
+        // Theme Toggle
+        const themeToggle = document.getElementById('themeToggle');
+        themeToggle.addEventListener('click', function () {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', newTheme);
+            localStorage.setItem('promptplus-theme', newTheme);
         });
     </script>
 </body>
