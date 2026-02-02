@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import shutil
 
-from .utils import load_prompts, save_prompts, get_current_date, count_tokens
+from .utils import load_prompts, save_prompts, get_current_date, count_tokens, load_settings, save_settings
 
 app = FastAPI()
 
@@ -52,6 +52,7 @@ async def favicon():
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
+    settings = load_settings()
     prompts = load_prompts()
     processed_prompts = {}
     for keyword, data in prompts.items():
@@ -71,6 +72,7 @@ async def read_root(request: Request):
         "request": request,
         "prompts": processed_prompts,
         "count_tokens": count_tokens,
+        "theme": settings.get("theme", "dark"),
         "all_tags": sorted(list(set(tag for p in processed_prompts.values() for tag in p.get('tags', []))))
     })
 
@@ -140,3 +142,11 @@ async def delete_prompt(keyword: str):
         del prompts[keyword]
         save_prompts(prompts)
     return RedirectResponse("/", status_code=303)
+
+
+@app.post("/update_theme")
+async def update_theme(theme: str = Form(...)):
+    settings = load_settings()
+    settings["theme"] = theme
+    save_settings(settings)
+    return {"status": "success", "theme": theme}

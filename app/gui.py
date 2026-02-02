@@ -21,6 +21,7 @@ from PyQt6.QtCore import QUrl, QTimer, Qt, QThread, pyqtSignal, QRect
 from PyQt6.QtGui import QRegion, QPainterPath, QColor, QIcon
 
 from .api import app
+from .utils import load_settings
 
 
 class LoadingThread(QThread):
@@ -57,6 +58,8 @@ class FastAPIWebBrowser(QMainWindow):
     def __init__(self):
         super().__init__()
         self.port = 8080
+        self.settings = load_settings()
+        self.current_theme = self.settings.get("theme", "dark")
         
         # Set Window Icon
         import sys
@@ -85,13 +88,7 @@ class FastAPIWebBrowser(QMainWindow):
         
         main_widget = QWidget()
         main_widget.setObjectName("mainWidget")
-        main_widget.setStyleSheet("""
-            #mainWidget {
-                background-color: #1a1b27;
-                border: 1px solid #3a3f4b;
-                border-radius: 0px;
-            }
-        """)
+        # Base style will be updated by apply_theme
         main_layout = QVBoxLayout(main_widget)
         main_layout.setContentsMargins(0, 0, 0, 0)
         main_layout.setSpacing(0)
@@ -99,7 +96,6 @@ class FastAPIWebBrowser(QMainWindow):
 
         self.title_bar = QWidget()
         self.title_bar.setFixedHeight(40)
-        self.title_bar.setStyleSheet("background-color: #1a1b27;")
         title_layout = QHBoxLayout(self.title_bar)
         title_layout.setContentsMargins(15, 0, 0, 0)
         title_layout.setSpacing(0) # Flush buttons touch each other
@@ -108,40 +104,27 @@ class FastAPIWebBrowser(QMainWindow):
         self.title_bar.setCursor(Qt.CursorShape.ArrowCursor)
         self.title_bar.setMouseTracking(True)
 
-        app_name = QLabel("PromptPlus - Text Replacement Tool v0.1")
-        app_name.setStyleSheet("color: #e6e6ff; font-weight: bold; font-size: 14px;")
-        title_layout.addWidget(app_name, alignment=Qt.AlignmentFlag.AlignVCenter)
+        self.app_name = QLabel("PromptPlus - Text Replacement Tool v0.1")
+        title_layout.addWidget(self.app_name, alignment=Qt.AlignmentFlag.AlignVCenter)
         title_layout.addStretch()
 
-        minimize_button = QPushButton("−")
-        minimize_button.setFixedSize(45, 40)
-        minimize_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        minimize_button.setStyleSheet("""
-            QPushButton { background-color: transparent; color: white; border: none; font-size: 20px; border-radius: 0px; }
-            QPushButton:hover { background-color: #3b3f4c; }
-        """)
-        minimize_button.clicked.connect(self.showMinimized)
-        title_layout.addWidget(minimize_button)
+        self.minimize_button = QPushButton("−")
+        self.minimize_button.setFixedSize(45, 40)
+        self.minimize_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.minimize_button.clicked.connect(self.showMinimized)
+        title_layout.addWidget(self.minimize_button)
 
         self.maximize_button = QPushButton("□")
         self.maximize_button.setFixedSize(45, 40)
         self.maximize_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.maximize_button.setStyleSheet("""
-            QPushButton { background-color: transparent; color: white; border: none; font-size: 16px; border-radius: 0px; padding-bottom: 2px; }
-            QPushButton:hover { background-color: #3b3f4c; }
-        """)
         self.maximize_button.clicked.connect(self.toggle_maximize)
         title_layout.addWidget(self.maximize_button)
 
-        close_button = QPushButton("✕")
-        close_button.setFixedSize(45, 40)
-        close_button.setCursor(Qt.CursorShape.PointingHandCursor)
-        close_button.setStyleSheet("""
-            QPushButton { background-color: transparent; color: white; border: none; font-size: 16px; border-radius: 0px; }
-            QPushButton:hover { background-color: #e81123; }
-        """)
-        close_button.clicked.connect(self.close)
-        title_layout.addWidget(close_button)
+        self.close_button = QPushButton("✕")
+        self.close_button.setFixedSize(45, 40)
+        self.close_button.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.close_button.clicked.connect(self.close)
+        title_layout.addWidget(self.close_button)
 
         main_layout.addWidget(self.title_bar)
 
@@ -149,15 +132,17 @@ class FastAPIWebBrowser(QMainWindow):
         loading_layout = QVBoxLayout(self.loading_widget)
         loading_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.loading_text = QLabel("Loading")
-        self.loading_text.setStyleSheet("color: #e6e6ff; font-size: 24px; font-weight: bold;")
         loading_layout.addWidget(self.loading_text, alignment=Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(self.loading_widget)
 
         self.browser = QWebEngineView()
         self.browser.setStyleSheet("border-radius: 0px;")
-        self.browser.page().setBackgroundColor(QColor("#1a1b27"))
+        # Background will be set in apply_theme
         self.browser.hide()
         main_layout.addWidget(self.browser)
+        
+        # Apply initial theme
+        self.apply_theme(self.current_theme)
 
         self.old_pos = None
         self.is_resizing = False
@@ -180,7 +165,46 @@ class FastAPIWebBrowser(QMainWindow):
         self.server_thread = LoadingThread()
         self.server_thread.server_ready.connect(self.on_server_ready)
         self.server_thread.start()
+
+    def apply_theme(self, theme):
+        """Apply theme-specific styling to the Qt components."""
+        is_dark = theme == "dark"
         
+        # Color palette
+        bg_color = "#1a1b27" if is_dark else "#f5f5f7"
+        title_bg = "#1a1b27" if is_dark else "#ebedef"
+        border_color = "#3a3f4b" if is_dark else "#dee2e6"
+        text_color = "#e6e6ff" if is_dark else "#1f2937"
+        hover_bg = "#3b3f4c" if is_dark else "#e0e2e5"
+        
+        # Main Window
+        self.centralWidget().setStyleSheet(f"""
+            #mainWidget {{
+                background-color: {bg_color};
+                border: 1px solid {border_color};
+                border-radius: 0px;
+            }}
+        """)
+        
+        # Title Bar
+        self.title_bar.setStyleSheet(f"background-color: {title_bg};")
+        self.app_name.setStyleSheet(f"color: {text_color}; font-weight: bold; font-size: 14px;")
+        
+        # Buttons
+        btn_style = f"""
+            QPushButton {{ background-color: transparent; color: {text_color}; border: none; border-radius: 0px; }}
+            QPushButton:hover {{ background-color: {hover_bg}; }}
+        """
+        self.minimize_button.setStyleSheet(btn_style + "QPushButton { font-size: 20px; }")
+        self.maximize_button.setStyleSheet(btn_style + "QPushButton { font-size: 16px; padding-bottom: 2px; }")
+        self.close_button.setStyleSheet(btn_style + f"QPushButton {{ font-size: 16px; }} QPushButton:hover {{ background-color: #e81123; color: white; }}")
+        
+        # Loading Text
+        self.loading_text.setStyleSheet(f"color: {text_color}; font-size: 24px; font-weight: bold;")
+        
+        # Browser Background
+        self.browser.page().setBackgroundColor(QColor(bg_color))
+
     def set_recursive_mouse_tracking(self, widget):
         """Enable mouse tracking for a widget and all its children recursively."""
         widget.setMouseTracking(True)

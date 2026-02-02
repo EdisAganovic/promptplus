@@ -25,6 +25,7 @@ else:
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 PROMPTS_FILE = os.path.join(base_dir, "prompts.json")
+SETTINGS_FILE = os.path.join(base_dir, "settings.json")
 
 
 def get_current_date():
@@ -61,6 +62,23 @@ def load_prompts():
 def save_prompts(prompts):
     with open(PROMPTS_FILE, 'w', encoding='utf-8') as f:
         json.dump(prompts, f, ensure_ascii=False, indent=2)
+
+
+def load_settings():
+    """Load app settings from JSON file."""
+    if os.path.exists(SETTINGS_FILE):
+        try:
+            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"theme": "dark"} # Default theme
+
+
+def save_settings(settings):
+    """Save app settings to JSON file."""
+    with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+        json.dump(settings, f, ensure_ascii=False, indent=2)
 
 
 def count_tokens(text):

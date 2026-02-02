@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="bs">
 <script>
-    // Load theme before page renders to prevent flash
+    // Load theme from server-side variable or local storage
     (function () {
-        const theme = localStorage.getItem('promptplus-theme') || 'light';
+        const serverTheme = "{{ theme }}";
+        const localTheme = localStorage.getItem('promptplus-theme');
+        const theme = serverTheme || localTheme || 'dark';
         document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('promptplus-theme', theme);
     })();
 </script>
 
@@ -33,6 +36,10 @@
                 <span class="fw-black">Prompt<span style="color: var(--accent-primary);">Plus</span></span>
             </a>
             <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-nav-action" type="button" data-bs-toggle="modal" data-bs-target="#aboutModal"
+                    title="About PromptPlus">
+                    <i class="fas fa-info-circle me-1"></i> About
+                </button>
                 <a href="/export" class="btn btn-nav-action" title="Export as JSON">
                     <i class="fas fa-file-export me-1"></i> Export
                 </a>
@@ -276,6 +283,38 @@
         </div>
     </div>
 
+    <!-- About Modal -->
+    <div class="modal fade" id="aboutModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">About</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <div class="mb-3">
+                        <i class="fas fa-bolt fa-3x mb-3" style="color: var(--accent-primary);"></i>
+                        <h4 class="fw-bold mb-1">PromptPlus v0.1</h4>
+                        <p class="text-muted"><em>by Edis Aganović</em></p>
+                    </div>
+                    <hr class="my-4" style="opacity: 0.1;">
+                    <div class="mb-4">
+                        <p class="small text-muted mb-2">Hvala:</p>
+                        <p class="mb-1 fw-semibold">AI grupa PixelPro 2025 Septembar</p>
+                        <p class="mb-0 fw-semibold">AI grupa KCKF 2025 Novembar</p>
+                    </div>
+                    <a href="https://www.edu387.com" target="_blank" class="text-decoration-none fw-bold"
+                        style="color: var(--accent-primary);">
+                        <i class="fas fa-external-link-alt me-1"></i> www.edu387.com
+                    </a>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-nav-action w-100" data-bs-dismiss="modal">Zatvori</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div class="toast-container position-fixed bottom-0 end-0 p-3">
         {% if message %}
@@ -399,8 +438,20 @@
             const html = document.documentElement;
             const currentTheme = html.getAttribute('data-theme');
             const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+
+            // Apply locally
             html.setAttribute('data-theme', newTheme);
             localStorage.setItem('promptplus-theme', newTheme);
+
+            // Sync with server
+            const formData = new FormData();
+            formData.append('theme', newTheme);
+            fetch('/update_theme', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+                .then(data => console.log('Theme updated:', data))
+                .catch(err => console.error('Error updating theme:', err));
         });
     </script>
 </body>
