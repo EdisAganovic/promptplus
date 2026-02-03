@@ -100,12 +100,19 @@ if os.path.exists(dist_dir):
         shutil.copytree(src_static, dst_static)
         print(f" - Copied static to {dst_static}")
         
-    # Copy prompts.json (if not exists, to avoid overwriting user data if we were updating, but this is fresh build)
+    # Copy prompts.json
     src_prompts = os.path.join(base_dir, "prompts.json")
     dst_prompts = os.path.join(dist_dir, "prompts.json")
     if os.path.exists(src_prompts):
         shutil.copy2(src_prompts, dst_prompts)
         print(f" - Copied prompts.json to {dst_prompts}")
+
+    # Copy icon.ico for installer/shortcuts
+    src_icon = os.path.join(base_dir, "icon.ico")
+    dst_icon = os.path.join(dist_dir, "icon.ico")
+    if os.path.exists(src_icon):
+        shutil.copy2(src_icon, dst_icon)
+        print(f" - Copied icon.ico to {dst_icon}")
     
     print("\n---------------------------------------------------------")
     print(f"Build complete! Open: {dist_dir}")
