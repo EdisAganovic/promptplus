@@ -13,10 +13,23 @@ from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import shutil
+import json
+import traceback
+import logging
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 from .utils import load_prompts, save_prompts, get_current_date, count_tokens, load_settings, save_settings
 
 app = FastAPI()
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Global error handler caught: {exc}")
+    logger.error(traceback.format_exc())
+    return HTMLResponse(content=f"Internal Server Error: {str(exc)}", status_code=500)
 
 # Static files
 import sys
@@ -73,6 +86,7 @@ async def read_root(request: Request):
         "prompts": processed_prompts,
         "count_tokens": count_tokens,
         "theme": settings.get("theme", "dark"),
+        "start_with_windows": settings.get("start_with_windows", False),
         "all_tags": sorted(list(set(tag for p in processed_prompts.values() for tag in p.get('tags', []))))
     })
 
@@ -96,21 +110,33 @@ async def add_prompt(keyword: str = Form(...), content: str = Form(...), tags: s
 
 @app.post("/update/{old_keyword}")
 async def update_prompt(old_keyword: str, keyword: str = Form(...), content: str = Form(...), tags: str = Form("")):
-    prompts = load_prompts()
-    if old_keyword in prompts:
-        del prompts[old_keyword]
-    if not keyword.startswith(':'):
-        keyword = ':' + keyword
-    
-    tag_list = [t.strip() for t in tags.split(',') if t.strip()]
-    
-    prompts[keyword] = {
-        'content': content,
-        'last_updated': get_current_date(),
-        'tags': tag_list
-    }
-    save_prompts(prompts)
-    return RedirectResponse("/", status_code=303)
+    try:
+        prompts = load_prompts()
+        
+        # Remove old keyword if it matches or if it's being renamed
+        if old_keyword in prompts:
+            del prompts[old_keyword]
+        
+        # Process new keyword
+        if not keyword.startswith(':'):
+            new_keyword = ':' + keyword
+        else:
+            new_keyword = keyword
+            
+        tag_list = [t.strip() for t in tags.split(',') if t.strip()]
+        
+        prompts[new_keyword] = {
+            'content': content,
+            'last_updated': get_current_date(),
+            'tags': tag_list
+        }
+        save_prompts(prompts)
+        logger.info(f"Updated prompt: {old_keyword} -> {new_keyword}")
+        return RedirectResponse("/", status_code=303)
+    except Exception as e:
+        logger.error(f"Error updating prompt: {e}")
+        logger.error(traceback.format_exc())
+        raise e
 
 
 @app.get("/export")
@@ -144,9 +170,17 @@ async def delete_prompt(keyword: str):
     return RedirectResponse("/", status_code=303)
 
 
-@app.post("/update_theme")
-async def update_theme(theme: str = Form(...)):
-    settings = load_settings()
-    settings["theme"] = theme
-    save_settings(settings)
     return {"status": "success", "theme": theme}
+
+
+@app.post("/update_settings")
+async def update_settings(start_with_windows: bool = Form(...)):
+    from .utils import save_settings, set_start_on_boot
+    settings = load_settings()
+    settings["start_with_windows"] = start_with_windows
+    save_settings(settings)
+    
+    # Update Windows Registry
+    set_start_on_boot(start_with_windows)
+    
+    return {"status": "success", "start_with_windows": start_with_windows}

@@ -8,6 +8,15 @@ Classes:
 - ReplacerThread(QThread): Runs replacer in background thread
   - run(): Calls replacer.start_monitoring()
   - stop(): Calls replacer.stop_monitoring()
+
+IMPORTANT: DO NOT CHANGE THE TEXT REPLACEMENT METHOD!
+======================================================
+The perform_replacement() function uses pyautogui for:
+  - pyautogui.press('backspace', ...) to delete the keyword
+  - pyautogui.hotkey('ctrl', 'v') to paste the replacement
+  
+This method has been proven to be FAST and RELIABLE.
+Do NOT replace it with keyboard library or any other method.
 """
 import time
 import threading

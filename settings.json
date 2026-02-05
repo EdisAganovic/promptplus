@@ -1,3 +1,4 @@
 {
-  "theme": "dark"
+  "theme": "dark",
+  "start_with_windows": false
 }

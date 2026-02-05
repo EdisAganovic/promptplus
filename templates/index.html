@@ -47,6 +47,10 @@
                     title="Import from JSON">
                     <i class="fas fa-file-import me-1"></i> Import
                 </button>
+                <button class="btn btn-nav-action" type="button" data-bs-toggle="modal" data-bs-target="#settingsModal"
+                    title="Settings">
+                    <i class="fas fa-cog"></i>
+                </button>
                 <button class="btn btn-accent" type="button" data-bs-toggle="modal" data-bs-target="#addPromptModal">
                     <i class="fas fa-plus me-1"></i> Dodaj
                 </button>
@@ -261,6 +265,30 @@
         </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div class="modal fade" id="settingsModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title fw-bold">Postavke</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body py-4">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="startWithWindowsCheck" {% if
+                            start_with_windows %}checked{% endif %}>
+                        <label class="form-check-label" for="startWithWindowsCheck">Pokreni sa Windows-om</label>
+                        <div class="form-text">Aplikacija će se automatski pokrenuti minimizirana pri prijavi na
+                            Windows.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-nav-action w-100" data-bs-dismiss="modal">Zatvori</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Delete Confirmation Modal -->
     <div class="modal fade" id="deleteConfirmModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -416,6 +444,14 @@
             });
         });
 
+        // Enter key to confirm deletion when modal is open
+        document.getElementById('deleteConfirmModal').addEventListener('keydown', function (e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                window.location.href = confirmDeleteBtn.href;
+            }
+        });
+
         // Close modal when form is submitted and redirect
         document.querySelectorAll('form[method="post"]').forEach(form => {
             form.addEventListener('submit', function () {
@@ -451,6 +487,26 @@
             }).then(response => response.json())
                 .then(data => console.log('Theme updated:', data))
                 .catch(err => console.error('Error updating theme:', err));
+        });
+
+        // Settings Toggle Logic
+        const startWithWindowsCheck = document.getElementById('startWithWindowsCheck');
+        startWithWindowsCheck.addEventListener('change', function () {
+            const formData = new FormData();
+            formData.append('start_with_windows', this.checked);
+
+            fetch('/update_settings', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+                .then(data => {
+                    console.log('Settings updated:', data);
+                    // Show toast if success
+                    if (data.status === 'success') {
+                        // Option to show a toast here if needed
+                    }
+                })
+                .catch(err => console.error('Error updating settings:', err));
         });
     </script>
 </body>

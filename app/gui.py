@@ -15,7 +15,7 @@ import requests
 import uvicorn
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget, 
                              QLabel, QHBoxLayout, QPushButton, QFileDialog,
-                             QGraphicsDropShadowEffect)
+                             QGraphicsDropShadowEffect, QSystemTrayIcon, QMenu)
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtCore import QUrl, QTimer, Qt, QThread, pyqtSignal, QRect
 from PyQt6.QtGui import QRegion, QPainterPath, QColor, QIcon
@@ -55,9 +55,10 @@ class LoadingThread(QThread):
 
 
 class FastAPIWebBrowser(QMainWindow):
-    def __init__(self):
+    def __init__(self, start_minimized=False):
         super().__init__()
         self.port = 8080
+        self.start_minimized = start_minimized
         self.settings = load_settings()
         self.current_theme = self.settings.get("theme", "dark")
         
@@ -166,6 +167,9 @@ class FastAPIWebBrowser(QMainWindow):
         self.server_thread.server_ready.connect(self.on_server_ready)
         self.server_thread.start()
 
+        # Initialize System Tray
+        self.setup_tray_icon()
+
     def apply_theme(self, theme):
         """Apply theme-specific styling to the Qt components."""
         is_dark = theme == "dark"
@@ -204,6 +208,82 @@ class FastAPIWebBrowser(QMainWindow):
         
         # Browser Background
         self.browser.page().setBackgroundColor(QColor(bg_color))
+        
+        # Tray Menu Styling
+        menu_style = f"""
+            QMenu {{
+                background-color: {bg_color};
+                color: {text_color};
+                border: 1px solid {border_color};
+                border-radius: 8px;
+                padding: 10px 0px;
+                font-size: 14px;
+            }}
+            QMenu::item {{
+                padding: 8px 30px;
+                background-color: transparent;
+                border: none;
+            }}
+            QMenu::item:selected {{
+                background-color: {hover_bg};
+                color: {text_color};
+            }}
+            QMenu::separator {{
+                height: 1px;
+                background: {border_color};
+                margin: 5px 15px;
+            }}
+        """
+        if hasattr(self, 'tray_menu'):
+            self.tray_menu.setStyleSheet(menu_style)
+
+    def setup_tray_icon(self):
+        """Initialize the system tray icon and its context menu."""
+        self.tray_icon = QSystemTrayIcon(self)
+        
+        # Reuse existing icon
+        root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        import sys
+        if getattr(sys, 'frozen', False):
+            root_dir = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
+        
+        icon_path = os.path.join(root_dir, "icon.ico")
+        if os.path.exists(icon_path):
+            self.tray_icon.setIcon(QIcon(icon_path))
+        
+        # Tray Context Menu
+        self.tray_menu = QMenu()
+        self.apply_theme(self.current_theme) # Re-apply to include menu styling
+        
+        open_action = self.tray_menu.addAction("Otvori")
+        open_action.triggered.connect(self.show_normal)
+        
+        self.tray_menu.addSeparator()
+        
+        exit_action = self.tray_menu.addAction("Izađi")
+        exit_action.triggered.connect(self.safe_exit)
+        
+        self.tray_icon.setContextMenu(self.tray_menu)
+        
+        # Click behavior
+        self.tray_icon.activated.connect(self.on_tray_icon_activated)
+        
+        self.tray_icon.show()
+
+    def on_tray_icon_activated(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            self.show_normal()
+
+    def show_normal(self):
+        """Restore window and ensure it's visible."""
+        self.showNormal() # Handles restoring from minimized state
+        self.show()
+        self.activateWindow()
+        self.raise_()
+
+    def safe_exit(self):
+        """Ensure clean exit from tray menu."""
+        QApplication.instance().quit()
 
     def set_recursive_mouse_tracking(self, widget):
         """Enable mouse tracking for a widget and all its children recursively."""
@@ -215,6 +295,21 @@ class FastAPIWebBrowser(QMainWindow):
         """Global event filter to capture events from child widgets for window management."""
         from PyQt6.QtCore import QEvent
         
+        # Security check: only intercept events for THIS window and its children
+        if not isinstance(obj, QWidget):
+            return super().eventFilter(obj, event)
+            
+        is_our_widget = False
+        curr = obj
+        while curr:
+            if curr == self:
+                is_our_widget = True
+                break
+            curr = curr.parent()
+            
+        if not is_our_widget:
+            return super().eventFilter(obj, event)
+            
         # Mouse Move: Handle resize cursor updates and active resizing
         if event.type() == QEvent.Type.MouseMove:
             pos = self.mapFromGlobal(event.globalPosition().toPoint())
@@ -313,6 +408,10 @@ class FastAPIWebBrowser(QMainWindow):
         else:
             self.maximize_button.setText("□")
         self.setMask(QRegion()) # Ensure sharp edges always
+        
+        # Minimize to tray behavior
+        if self.isMinimized():
+            self.hide()
 
 
 

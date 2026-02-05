@@ -1,29 +1,7 @@
 {
-  ":testiramo": {
-    "content": "Ovo je proba.",
-    "last_updated": "02.02.2026",
-    "tags": [
-      "gemini"
-    ]
-  },
-  ":test": {
-    "content": "testiramo",
-    "last_updated": "02.02.2026",
-    "tags": []
-  },
-  ":elmin": {
-    "content": "Ovaj prompt manager radi sistemski. Nakon što definišete svoje prompte, možete ih koristiti bilo gdje u bilo kojoj aplikaciji na vašem računaru.",
-    "last_updated": "02.02.2026",
-    "tags": []
-  },
   ":bosanac": {
-    "content": "Prevedi mi na bosanski jezik. Ne koristi ćirilicu. Koristi bosansku gramatiku.",
-    "last_updated": "02.02.2026",
-    "tags": []
-  },
-  ":kurs": {
-    "content": "Mi smo polaznici kursa AI.",
-    "last_updated": "02.02.2026",
+    "content": "Prevedi mi na bosanski jezik. \r\nNe koristi ćirilicu. \r\nKoristi bosansku gramatiku.",
+    "last_updated": "02.03.2026",
     "tags": []
   }
 }
