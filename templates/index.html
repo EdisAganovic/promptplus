@@ -22,6 +22,10 @@
 </head>
 
 <body class="d-flex flex-column min-vh-100">
+    <div class="bg-animation-container">
+        <div class="bg-blob blob-1"></div>
+        <div class="bg-blob blob-2"></div>
+    </div>
     <div class="loading-overlay" id="loadingOverlay">
         <div class="text-center">
             <div class="spinner-border text-primary mb-3" role="status"></div>
@@ -321,7 +325,7 @@
                 <div class="modal-body text-center py-4">
                     <div class="mb-3">
                         <i class="fas fa-bolt fa-3x mb-3" style="color: var(--accent-primary);"></i>
-                        <h4 class="fw-bold mb-1">PromptPlus v0.1</h4>
+                        <h4 class="fw-bold mb-1">PromptPlus v{{ version }}</h4>
                         <p class="text-muted"><em>by Edis Aganović</em></p>
                     </div>
                     <hr class="my-4" style="opacity: 0.1;">
@@ -508,6 +512,24 @@
                 })
                 .catch(err => console.error('Error updating settings:', err));
         });
+
+        // Background Animation Cursor Tracking
+        (function () {
+            let lastUpdate = 0;
+            const root = document.documentElement;
+
+            document.addEventListener('mousemove', (e) => {
+                const now = Date.now();
+                if (now - lastUpdate < 16) return; // Limit to ~60fps
+
+                lastUpdate = now;
+                const x = (e.clientX / window.innerWidth) * 100;
+                const y = (e.clientY / window.innerHeight) * 100;
+
+                root.style.setProperty('--mouse-x', `${x}%`);
+                root.style.setProperty('--mouse-y', `${y}%`);
+            });
+        })();
     </script>
 </body>
 

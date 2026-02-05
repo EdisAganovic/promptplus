@@ -21,7 +21,7 @@ from PyQt6.QtCore import QUrl, QTimer, Qt, QThread, pyqtSignal, QRect
 from PyQt6.QtGui import QRegion, QPainterPath, QColor, QIcon
 
 from .api import app
-from .utils import load_settings
+from .utils import load_settings, VERSION
 
 
 class LoadingThread(QThread):
@@ -105,7 +105,7 @@ class FastAPIWebBrowser(QMainWindow):
         self.title_bar.setCursor(Qt.CursorShape.ArrowCursor)
         self.title_bar.setMouseTracking(True)
 
-        self.app_name = QLabel("PromptPlus - Text Replacement Tool v0.1")
+        self.app_name = QLabel(f"PromptPlus - Text Replacement Tool v{VERSION}")
         title_layout.addWidget(self.app_name, alignment=Qt.AlignmentFlag.AlignVCenter)
         title_layout.addStretch()
 

@@ -21,7 +21,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from .utils import load_prompts, save_prompts, get_current_date, count_tokens, load_settings, save_settings
+from .utils import load_prompts, save_prompts, get_current_date, count_tokens, load_settings, save_settings, VERSION
 
 app = FastAPI()
 
@@ -87,7 +87,8 @@ async def read_root(request: Request):
         "count_tokens": count_tokens,
         "theme": settings.get("theme", "dark"),
         "start_with_windows": settings.get("start_with_windows", False),
-        "all_tags": sorted(list(set(tag for p in processed_prompts.values() for tag in p.get('tags', []))))
+        "all_tags": sorted(list(set(tag for p in processed_prompts.values() for tag in p.get('tags', [])))),
+        "version": VERSION
     })
 
 
@@ -169,7 +170,11 @@ async def delete_prompt(keyword: str):
         save_prompts(prompts)
     return RedirectResponse("/", status_code=303)
 
-
+@app.post("/update_theme")
+async def update_theme(theme: str = Form(...)):
+    settings = load_settings()
+    settings["theme"] = theme
+    save_settings(settings)
     return {"status": "success", "theme": theme}
 
 
