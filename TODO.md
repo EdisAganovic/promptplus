@@ -16,7 +16,6 @@
 
 ## 🎨 UI/UX Enhancements
 
-- [ ] **Custom Accent Colors** - Let users pick their own theme accent color.
 - [ ] **Prompt Templates** - Pre-built starter prompts users can import (e.g., "Email Templates Pack", "Code Review Prompts").
 - [ ] **Drag & Drop Reordering** - Rearrange prompts by dragging cards.
 
