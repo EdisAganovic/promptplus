@@ -2,6 +2,35 @@
 
 All notable changes to PromptPlus will be documented in this file.
 
+## [0.3] - 2026-03-04
+
+### Added
+- **Performance Optimizations** - Multiple improvements for smoother operation on slow CPUs
+- **Thread-Safe Text Replacement** - Fixed race conditions in keyboard hook handling
+- **Start Minimized Support** - `--minimize` flag now works correctly to start hidden in tray
+
+### Changed
+- **Removed Background Animations** - Eliminated cursor-following glow effects for better performance
+- **Optimized Event Filter** - Replaced O(n) parent traversal with O(1) window check
+- **Cursor Update Throttling** - Only updates cursor after 3px movement threshold
+- **Keyword Caching** - Sorted keywords cached to avoid re-sorting on every keypress
+- **Reduced File I/O** - File modification checks reduced from 10x/sec to once per 2 seconds
+- **Faster Server Startup** - Exponential backoff for server health checks
+
+### Fixed
+- **Event Filter Memory Leak** - Properly remove event filter on window close
+- **Keyword Collision on Edit** - Prevents silently overwriting existing prompts when renaming
+- **Import Error Handling** - Invalid JSON now shows error instead of redirecting
+- **Cursor Flicker on Maximize** - Reset cursor position cache when window state changes
+- **Thread-Unsafe Buffer Access** - Added proper locking for `current_buffer` modifications
+- **Dark Mode Form Text Visibility** - Added proper `.form-text` styling for dark theme
+
+### Removed
+- **Cursor-Tracking JavaScript** - Removed mouse position tracking from frontend
+- **Blob Animation CSS Variables** - Cleaned up unused `--bg-glow`, `--blob-*` variables
+- **Body Transition Effects** - Removed `transition` on body to prevent repaints on theme switch
+- **Backdrop Filter Blur** - Removed expensive glassmorphism effects on cards and modals
+
 ## [0.2] - 2026-02-05
 
 ### Added

@@ -113,19 +113,27 @@ async def add_prompt(keyword: str = Form(...), content: str = Form(...), tags: s
 async def update_prompt(old_keyword: str, keyword: str = Form(...), content: str = Form(...), tags: str = Form("")):
     try:
         prompts = load_prompts()
-        
-        # Remove old keyword if it matches or if it's being renamed
-        if old_keyword in prompts:
-            del prompts[old_keyword]
-        
-        # Process new keyword
+
+        # Process new keyword first
         if not keyword.startswith(':'):
             new_keyword = ':' + keyword
         else:
             new_keyword = keyword
-            
+
+        # FIX: Check for keyword collision - don't overwrite existing prompts
+        if new_keyword in prompts and new_keyword != old_keyword:
+            logger.warning(f"Cannot rename '{old_keyword}' to '{new_keyword}': target already exists")
+            return HTMLResponse(
+                content=f"Prompt '{new_keyword}' already exists. Please use a different keyword.",
+                status_code=400
+            )
+
+        # Remove old keyword
+        if old_keyword in prompts:
+            del prompts[old_keyword]
+
         tag_list = [t.strip() for t in tags.split(',') if t.strip()]
-        
+
         prompts[new_keyword] = {
             'content': content,
             'last_updated': get_current_date(),
@@ -153,12 +161,19 @@ async def import_prompts(file: UploadFile = File(...)):
     from .utils import PROMPTS_FILE
     try:
         content = await file.read()
-        # Validate JSON
-        json.loads(content)
+        # Validate JSON first
+        try:
+            json.loads(content)
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in import: {e}")
+            return HTMLResponse(content=f"Invalid JSON file: {str(e)}", status_code=400)
+        
         with open(PROMPTS_FILE, "wb") as f:
             f.write(content)
     except Exception as e:
-        return {"error": f"Invalid JSON: {str(e)}"}
+        logger.error(f"Error importing prompts: {e}")
+        logger.error(traceback.format_exc())
+        return HTMLResponse(content=f"Import failed: {str(e)}", status_code=500)
     return RedirectResponse("/", status_code=303)
 
 

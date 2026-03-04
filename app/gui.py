@@ -13,11 +13,11 @@ import time
 import threading
 import requests
 import uvicorn
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget, 
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget,
                              QLabel, QHBoxLayout, QPushButton, QFileDialog,
                              QGraphicsDropShadowEffect, QSystemTrayIcon, QMenu)
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtCore import QUrl, QTimer, Qt, QThread, pyqtSignal, QRect
+from PyQt6.QtCore import QUrl, QTimer, Qt, QThread, pyqtSignal, QRect, QObject
 from PyQt6.QtGui import QRegion, QPainterPath, QColor, QIcon
 
 from .api import app
@@ -35,22 +35,25 @@ class LoadingThread(QThread):
             config = uvicorn.Config(app, host="127.0.0.1", port=8080, log_config=None)
             server = uvicorn.Server(config)
             server.run()
-        
+
         server_thread = threading.Thread(target=start_server, daemon=True)
         server_thread.start()
-        
+
+        # Faster initial check with exponential backoff for slow CPUs
         max_attempts = 60
         attempts = 0
+        sleep_time = 0.3  # Start faster
         while attempts < max_attempts:
             try:
-                response = requests.get("http://127.0.0.1:8080", timeout=1)
+                response = requests.get("http://127.0.0.1:8080", timeout=0.5)
                 if response.status_code == 200:
                     self.server_ready.emit()
                     return
             except requests.exceptions.RequestException:
-                time.sleep(0.5)
+                time.sleep(sleep_time)
                 attempts += 1
-        
+                sleep_time = min(sleep_time * 1.2, 0.8)  # Cap at 0.8s
+
         self.server_ready.emit()
 
 
@@ -61,22 +64,22 @@ class FastAPIWebBrowser(QMainWindow):
         self.start_minimized = start_minimized
         self.settings = load_settings()
         self.current_theme = self.settings.get("theme", "dark")
-        
+
         # Set Window Icon
         import sys
         if getattr(sys, 'frozen', False):
             root_dir = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
         else:
             root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            
+
         icon_path = os.path.join(root_dir, "icon.ico")
         if os.path.exists(icon_path):
             self.setWindowIcon(QIcon(icon_path))
-            
+
         self.setWindowTitle("PromptPlus - Text Replacement Tool")
         self.setWindowFlag(Qt.WindowType.FramelessWindowHint)
         self.setMinimumSize(800, 600)
-        
+
         # Set geometry and center on screen
         width, height = 1200, 870
         screen = QApplication.primaryScreen().availableGeometry()
@@ -86,7 +89,7 @@ class FastAPIWebBrowser(QMainWindow):
 
         # Resize edge margin - 12px for 4K reliability
         self.resize_margin = 12
-        
+
         main_widget = QWidget()
         main_widget.setObjectName("mainWidget")
         # Base style will be updated by apply_theme
@@ -100,7 +103,7 @@ class FastAPIWebBrowser(QMainWindow):
         title_layout = QHBoxLayout(self.title_bar)
         title_layout.setContentsMargins(15, 0, 0, 0)
         title_layout.setSpacing(0) # Flush buttons touch each other
-        
+
         # KEY FIX: Force Arrow cursor on title bar to prevent resize cursor bleed-through
         self.title_bar.setCursor(Qt.CursorShape.ArrowCursor)
         self.title_bar.setMouseTracking(True)
@@ -141,7 +144,7 @@ class FastAPIWebBrowser(QMainWindow):
         # Background will be set in apply_theme
         self.browser.hide()
         main_layout.addWidget(self.browser)
-        
+
         # Apply initial theme
         self.apply_theme(self.current_theme)
 
@@ -151,17 +154,21 @@ class FastAPIWebBrowser(QMainWindow):
         self.resize_start_geometry = None
         self.setMouseTracking(True)
         self.centralWidget().setMouseTracking(True)
-        
-        # Enable recursive mouse tracking for all child widgets
-        self.set_recursive_mouse_tracking(self)
-        
+
+        # OPTIMIZATION: Only enable mouse tracking on title bar (not all children)
+        # This reduces CPU overhead from tracking events on every widget
+        self.title_bar.setMouseTracking(True)
+        for btn in [self.minimize_button, self.maximize_button, self.close_button]:
+            btn.setMouseTracking(True)
+
         # Install event filter on the app to capture all mouse move events
         QApplication.instance().installEventFilter(self)
 
+        # OPTIMIZATION: Slower loading animation (1s instead of 500ms) for slow CPUs
         self.loading_timer = QTimer(self)
         self.dots = 0
         self.loading_timer.timeout.connect(self.update_loading_animation)
-        self.loading_timer.start(500)
+        self.loading_timer.start(1000)
 
         self.server_thread = LoadingThread()
         self.server_thread.server_ready.connect(self.on_server_ready)
@@ -169,6 +176,11 @@ class FastAPIWebBrowser(QMainWindow):
 
         # Initialize System Tray
         self.setup_tray_icon()
+
+        # OPTIMIZATION: Cache for cursor state to avoid redundant setOverrideCursor calls
+        self._last_cursor_shape = None
+        self._cursor_update_threshold = 3  # Pixels to move before updating cursor
+        self._last_cursor_pos = None
 
     def apply_theme(self, theme):
         """Apply theme-specific styling to the Qt components."""
@@ -283,37 +295,39 @@ class FastAPIWebBrowser(QMainWindow):
 
     def safe_exit(self):
         """Ensure clean exit from tray menu."""
+        # FIX: Remove event filter to prevent memory leak
+        try:
+            QApplication.instance().removeEventFilter(self)
+        except:
+            pass
         QApplication.instance().quit()
 
-    def set_recursive_mouse_tracking(self, widget):
-        """Enable mouse tracking for a widget and all its children recursively."""
-        widget.setMouseTracking(True)
-        for child in widget.findChildren(QWidget):
-            child.setMouseTracking(True)
+    def closeEvent(self, event):
+        """FIX: Clean up event filter when window is closed."""
+        try:
+            QApplication.instance().removeEventFilter(self)
+        except:
+            pass
+        event.accept()
 
     def eventFilter(self, obj, event):
         """Global event filter to capture events from child widgets for window management."""
         from PyQt6.QtCore import QEvent
-        
-        # Security check: only intercept events for THIS window and its children
+
+        # OPTIMIZATION: Fast path - only process events for our window
+        # Skip expensive checks if event is not for our window hierarchy
         if not isinstance(obj, QWidget):
             return super().eventFilter(obj, event)
-            
-        is_our_widget = False
-        curr = obj
-        while curr:
-            if curr == self:
-                is_our_widget = True
-                break
-            curr = curr.parent()
-            
-        if not is_our_widget:
+
+        # OPTIMIZATION: Use objectName check instead of while-loop parent traversal
+        # This is O(1) instead of O(n) where n is depth of widget tree
+        if obj.window() is not self:
             return super().eventFilter(obj, event)
-            
+
         # Mouse Move: Handle resize cursor updates and active resizing
         if event.type() == QEvent.Type.MouseMove:
             pos = self.mapFromGlobal(event.globalPosition().toPoint())
-            
+
             if self.is_resizing:
                 self.resize_window(event)
                 return True
@@ -324,36 +338,42 @@ class FastAPIWebBrowser(QMainWindow):
                 self.old_pos = event.globalPosition().toPoint()
                 return True
             elif not self.isMaximized():
-                if self.rect().contains(pos):
-                    self.update_resize_cursor(pos)
-        
+                # OPTIMIZATION: Throttle cursor updates - only update if moved enough
+                global_pos = event.globalPosition().toPoint()
+                if self._last_cursor_pos is None or \
+                   (abs(global_pos.x() - self._last_cursor_pos.x()) > self._cursor_update_threshold or
+                    abs(global_pos.y() - self._last_cursor_pos.y()) > self._cursor_update_threshold):
+                    self._last_cursor_pos = global_pos
+                    if self.rect().contains(pos):
+                        self.update_resize_cursor(pos)
+
         # Mouse Press: Detect start of resize or drag near edges
         elif event.type() == QEvent.Type.MouseButtonPress and event.button() == Qt.MouseButton.LeftButton:
             pos = self.mapFromGlobal(event.globalPosition().toPoint())
-            
+
             # 1. Edge Resize check (Highest Priority)
             if not self.isMaximized():
                 direction = self.get_resize_direction(pos)
                 if direction:
                     self.start_resizing(event, direction)
                     return True
-            
+
             # 2. Title Bar Drag check
             if self.title_bar.geometry().contains(pos):
                 # Don't intercept if clicking buttons (they are nested in the title bar)
                 child = self.childAt(pos)
                 if child and isinstance(child, QPushButton):
                     return False
-                    
+
                 self.old_pos = event.globalPosition().toPoint()
                 return True
-                
+
         # Mouse Release: Reset states
         elif event.type() == QEvent.Type.MouseButtonRelease:
             if self.is_resizing or self.old_pos is not None:
                 self.mouseReleaseEvent(event)
                 return True
-                
+
         return super().eventFilter(obj, event)
 
     def update_loading_animation(self):
@@ -365,17 +385,20 @@ class FastAPIWebBrowser(QMainWindow):
             self.loading_timer.stop()
             self.loading_text.setText("Loading... Done!")
             QTimer.singleShot(500, self.show_browser)
+            # FIX: Respect start_minimized flag - don't show window if minimized
+            if not self.start_minimized:
+                QTimer.singleShot(600, self.show)
 
     def show_browser(self):
         self.loading_widget.hide()
         self.browser.show()
-        
-        # Refresh mouse tracking for the now visible browser and its children
-        self.set_recursive_mouse_tracking(self.browser)
-        
+
+        # OPTIMIZATION: Only enable mouse tracking on browser itself, not children
+        self.browser.setMouseTracking(True)
+
         # Connect download requested signal to handle "Save As"
         self.browser.page().profile().downloadRequested.connect(self.on_download_requested)
-        
+
         self.browser.load(QUrl(f"http://127.0.0.1:{self.port}"))
 
     def on_download_requested(self, download):
@@ -405,10 +428,12 @@ class FastAPIWebBrowser(QMainWindow):
     def on_window_state_changed(self):
         if self.isMaximized():
             self.maximize_button.setText("❐")
+            # FIX: Reset cursor position cache on maximize to prevent flicker
+            self._last_cursor_pos = None
         else:
             self.maximize_button.setText("□")
         self.setMask(QRegion()) # Ensure sharp edges always
-        
+
         # Minimize to tray behavior
         if self.isMinimized():
             self.hide()
@@ -417,12 +442,12 @@ class FastAPIWebBrowser(QMainWindow):
 
     def get_resize_direction(self, pos):
         margin = self.resize_margin
-        
+
         on_left = pos.x() < margin
         on_right = pos.x() > self.width() - margin
         on_top = pos.y() < margin
         on_bottom = pos.y() > self.height() - margin
-        
+
         # Priority 1: Check corners and edges for resize triggers
         if on_left and on_top: return 'top_left'
         if on_right and on_top: return 'top_right'
@@ -433,15 +458,6 @@ class FastAPIWebBrowser(QMainWindow):
         if on_top: return 'top'
         if on_bottom: return 'bottom'
 
-        # Priority 2: Only if not at edge, check if we are in the title bar area
-        child = self.childAt(pos)
-        if child is not None:
-             curr = child
-             while curr is not None and curr is not self:
-                 if curr is self.title_bar:
-                     return None
-                 curr = curr.parent()
-        
         return None
 
     def mouseDoubleClickEvent(self, event):
@@ -511,6 +527,8 @@ class FastAPIWebBrowser(QMainWindow):
             self.is_resizing = False
             self.resize_direction = None
             self.resize_start_geometry = None
+            # FIX: Reset cursor position cache
+            self._last_cursor_pos = None
             while QApplication.overrideCursor():
                 QApplication.restoreOverrideCursor()
             self.unsetCursor()
@@ -519,6 +537,7 @@ class FastAPIWebBrowser(QMainWindow):
         if self.isMaximized():
             if QApplication.overrideCursor(): QApplication.restoreOverrideCursor()
             self.setCursor(Qt.CursorShape.ArrowCursor)
+            self._last_cursor_shape = Qt.CursorShape.ArrowCursor
             return
 
         direction = self.get_resize_direction(pos)
@@ -535,14 +554,18 @@ class FastAPIWebBrowser(QMainWindow):
 
         if direction in cursor_map:
             new_cursor = cursor_map[direction]
-            if QApplication.overrideCursor() and QApplication.overrideCursor().shape() == new_cursor:
-                return # Already set
+            # OPTIMIZATION: Only update if cursor shape actually changed
+            if self._last_cursor_shape == new_cursor:
+                return
             QApplication.setOverrideCursor(new_cursor)
+            self._last_cursor_shape = new_cursor
         else:
             # Not in resize zone - restore default behavior
-            while QApplication.overrideCursor():
-                QApplication.restoreOverrideCursor()
-            self.setCursor(Qt.CursorShape.ArrowCursor)
+            if self._last_cursor_shape != Qt.CursorShape.ArrowCursor:
+                while QApplication.overrideCursor():
+                    QApplication.restoreOverrideCursor()
+                self.setCursor(Qt.CursorShape.ArrowCursor)
+                self._last_cursor_shape = Qt.CursorShape.ArrowCursor
 
     def changeEvent(self, event):
         if event.type() == event.Type.WindowStateChange:
