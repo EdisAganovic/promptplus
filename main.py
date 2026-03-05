@@ -10,6 +10,9 @@ import threading
 # Add current directory to sys.path to ensure modules are found
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
+# Suppress Qt QPA console warnings (like DPI awareness access denied)
+os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
+
 # Global references for cleanup
 _replacer_thread = None
 _quick_search_window = None
