@@ -51,9 +51,6 @@
                     title="Settings">
                     <i class="fas fa-cog"></i>
                 </button>
-                <button class="btn btn-accent" type="button" data-bs-toggle="modal" data-bs-target="#addPromptModal">
-                    <i class="fas fa-plus me-1"></i> Dodaj
-                </button>
                 <button class="theme-toggle" id="themeToggle" title="Toggle theme">
                     <i class="fas fa-moon"></i>
                     <i class="fas fa-sun"></i>
@@ -62,23 +59,27 @@
         </div>
     </nav>
 
-    <div class="container-fluid flex-grow-1">
+    <div class="container flex-grow-1 py-4">
         <div class="row">
             <!-- Main Content -->
             <div class="col-12">
-                <div class="container py-4">
-                    <div class="row mb-4">
-                        <div class="col-12">
+                <div class="row mb-4">
+                    <div class="col-12">
                             <!-- Search Container -->
-                            <div class="search-container">
-                                <div class="search-input-wrapper">
+                            <div class="search-container d-flex gap-3 align-items-center">
+                                <div class="search-input-wrapper flex-grow-1">
                                     <i class="fas fa-search search-icon"></i>
-                                    <input type="text" id="searchInput" class="search-input"
+                                    <input type="text" id="searchInput" class="search-input w-100"
                                         placeholder="Pretraži promptove">
                                     <button class="search-clear" type="button" id="searchClear">
                                         <i class="fas fa-times"></i>
                                     </button>
                                 </div>
+                                <button class="btn btn-accent d-flex align-items-center justify-content-center" 
+                                    type="button" data-bs-toggle="modal" data-bs-target="#addPromptModal" 
+                                    style="height: 48px; min-width: 120px; font-weight: 600; font-size: 15px;">
+                                    <i class="fas fa-plus me-2"></i> Dodaj
+                                </button>
                             </div>
                             <div id="tagFilters" class="d-flex flex-wrap align-items-center">
                                 <span class="text-muted small me-2"><i class="fas fa-filter me-1"></i>
@@ -103,8 +104,11 @@
                                 <div class="card-header d-flex justify-content-between align-items-center">
                                     <div class="prompt-keyword">{{ keyword }}</div>
                                     <div class="action-buttons">
-                                        <button type="button" class="btn btn-sm btn-outline-light me-1"
-                                            data-bs-toggle="modal" data-bs-target="#editPromptModal{{ loop.index }}">
+                                        <button type="button" class="btn btn-sm btn-outline-light me-1 btn-edit-prompt"
+                                            data-keyword="{{ keyword }}"
+                                            data-content="{{ prompt_data.content }}"
+                                            data-tags="{{ prompt_data.tags|join(', ') }}"
+                                            title="Uredi prompt">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <button type="button" class="btn btn-sm btn-outline-danger btn-delete-confirm"
@@ -132,51 +136,6 @@
                                 </div>
                             </div>
                         </div>
-
-                        <!-- Edit Modal -->
-                        <div class="modal fade" id="editPromptModal{{ loop.index }}" tabindex="-1">
-                            <div class="modal-dialog modal-lg modal-dialog-centered">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">Uredi prompt</h5>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"
-                                            aria-label="Close"></button>
-                                    </div>
-                                    <form method="post" action="/update/{{ keyword }}">
-                                        <div class="modal-body">
-                                            <div class="mb-4">
-                                                <label for="editKeyword{{ loop.index }}" class="form-label">Ključna
-                                                    riječ</label>
-                                                <input type="text" class="form-control form-control-lg"
-                                                    id="editKeyword{{ loop.index }}" name="keyword"
-                                                    value="{{ keyword[1:] if keyword.startswith(':') else keyword }}"
-                                                    required>
-                                                <div class="form-text text-muted">Znak : se automatski dodaje.</div>
-                                            </div>
-                                            <div class="mb-4">
-                                                <label for="editContent{{ loop.index }}" class="form-label">Sadržaj
-                                                    prompta</label>
-                                                <textarea class="form-control" id="editContent{{ loop.index }}"
-                                                    name="content" rows="6"
-                                                    required>{{ prompt_data.content }}</textarea>
-                                            </div>
-                                            <div class="mb-0">
-                                                <label for="editTags{{ loop.index }}" class="form-label">Tagovi</label>
-                                                <input type="text" class="form-control" id="editTags{{ loop.index }}"
-                                                    name="tags" value="{{ prompt_data.tags|join(', ') }}"
-                                                    placeholder="posao, privatno, kod...">
-                                                <div class="form-text text-muted">Odvojite tagove zarezima.</div>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer">
-                                            <button type="button" class="btn btn-outline-light btn-cancel"
-                                                data-bs-dismiss="modal">Odustani</button>
-                                            <button type="submit" class="btn btn-accent">Sačuvaj izmjene</button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
                         {% endfor %}
                     </div>
                     {% else %}
@@ -192,10 +151,8 @@
                         </button>
                     </div>
                     {% endif %}
-                </div>
             </div>
         </div>
-    </div>
     </div>
 
     <!-- Import Modal -->
@@ -265,6 +222,40 @@
         </div>
     </div>
 
+    <!-- Edit Prompt Modal (Single Dynamic Modal) -->
+    <div class="modal fade" id="editPromptModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Uredi prompt</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form method="post" id="editPromptForm">
+                    <div class="modal-body">
+                        <div class="mb-4">
+                            <label for="editKeyword" class="form-label">Ključna riječ</label>
+                            <input type="text" class="form-control form-control-lg" id="editKeyword" name="keyword" required>
+                            <div class="form-text text-muted">Znak : se automatski dodaje.</div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="editContent" class="form-label">Sadržaj prompta</label>
+                            <textarea class="form-control" id="editContent" name="content" rows="6" required></textarea>
+                        </div>
+                        <div class="mb-0">
+                            <label for="editTags" class="form-label">Tagovi</label>
+                            <input type="text" class="form-control" id="editTags" name="tags" placeholder="posao, privatno, kod...">
+                            <div class="form-text text-muted">Odvojite tagove zarezima.</div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-light btn-cancel" data-bs-dismiss="modal">Odustani</button>
+                        <button type="submit" class="btn btn-accent">Sačuvaj izmjene</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Settings Modal -->
     <div class="modal fade" id="settingsModal" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -326,11 +317,11 @@
                     </div>
                     <hr class="my-4" style="opacity: 0.1;">
                     <div class="mb-4">
-                        <p class="small text-muted mb-2">Hvala:</p>
+                        <p class="small text-muted mb-2">Veliko hvala polaznicima grupe:</p>
                         <p class="mb-1 fw-semibold">AI grupa PixelPro 2025 Septembar</p>
                         <p class="mb-0 fw-semibold">AI grupa KCKF 2025 Novembar</p>
                     </div>
-                    <a href="https://www.edu387.com" target="_blank" class="text-decoration-none fw-bold"
+                    <a href="javascript:void(0)" onclick="fetch('/open_url?url=https://www.edu387.com')" class="text-decoration-none fw-bold"
                         style="color: var(--accent-primary);">
                         <i class="fas fa-external-link-alt me-1"></i> www.edu387.com
                     </a>
@@ -450,6 +441,32 @@
                 e.preventDefault();
                 window.location.href = confirmDeleteBtn.href;
             }
+        });
+
+        // Edit Prompt Modal Logic (Single Dynamic Modal)
+        const editModal = new bootstrap.Modal(document.getElementById('editPromptModal'));
+        const editForm = document.getElementById('editPromptForm');
+        const editOldKeywordInput = document.getElementById('editOldKeyword');
+        const editKeywordInput = document.getElementById('editKeyword');
+        const editContentInput = document.getElementById('editContent');
+        const editTagsInput = document.getElementById('editTags');
+
+        document.querySelectorAll('.btn-edit-prompt').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const keyword = this.getAttribute('data-keyword');
+                const content = this.getAttribute('data-content');
+                const tags = this.getAttribute('data-tags');
+
+                // Populate modal with prompt data
+                editKeywordInput.value = keyword.startsWith(':') ? keyword.substring(1) : keyword;
+                editContentInput.value = content;
+                editTagsInput.value = tags;
+
+                // Update form action URL to include the old keyword in the path
+                editForm.action = `/update/${encodeURIComponent(keyword)}`;
+
+                editModal.show();
+            });
         });
 
         // Close modal when form is submitted and redirect

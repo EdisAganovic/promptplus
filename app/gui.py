@@ -17,22 +17,45 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QWidget,
                              QLabel, QHBoxLayout, QPushButton, QFileDialog,
                              QGraphicsDropShadowEffect, QSystemTrayIcon, QMenu)
 from PyQt6.QtWebEngineWidgets import QWebEngineView
-from PyQt6.QtCore import QUrl, QTimer, Qt, QThread, pyqtSignal, QRect, QObject
+from PyQt6.QtCore import QUrl, QTimer, Qt, QThread, pyqtSignal, QRect, QObject, QFileSystemWatcher
 from PyQt6.QtGui import QRegion, QPainterPath, QColor, QIcon
 
 from .api import app
-from .utils import load_settings, VERSION
+from .utils import load_settings, SETTINGS_FILE, VERSION
 
 
 class LoadingThread(QThread):
-    server_ready = pyqtSignal()
+    server_ready = pyqtSignal(int)
+
+    def __init__(self, start_port=8080):
+        super().__init__()
+        self.port = start_port
 
     def run(self):
-        """Run the FastAPI server in a separate thread."""
+        """Run the FastAPI server on an available port."""
+        import socket
+        
+        # Find an available port
+        current_port = self.port
+        while current_port < 8100:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                try:
+                    s.bind(("127.0.0.1", current_port))
+                    self.port = current_port
+                    break
+                except socket.error:
+                    current_port += 1
+        
         def start_server():
             # In frozen noconsole app, stdout/stderr might be None
             # causing uvicorn default logger to crash
-            config = uvicorn.Config(app, host="127.0.0.1", port=8080, log_config=None)
+            config = uvicorn.Config(
+                app, 
+                host="127.0.0.1", 
+                port=self.port, 
+                log_config=None,
+                log_level="error"  # Suppress all non-error messages
+            )
             server = uvicorn.Server(config)
             server.run()
 
@@ -45,16 +68,16 @@ class LoadingThread(QThread):
         sleep_time = 0.3  # Start faster
         while attempts < max_attempts:
             try:
-                response = requests.get("http://127.0.0.1:8080", timeout=0.5)
+                response = requests.get(f"http://127.0.0.1:{self.port}", timeout=0.5)
                 if response.status_code == 200:
-                    self.server_ready.emit()
+                    self.server_ready.emit(self.port)
                     return
             except requests.exceptions.RequestException:
                 time.sleep(sleep_time)
                 attempts += 1
                 sleep_time = min(sleep_time * 1.2, 0.8)  # Cap at 0.8s
 
-        self.server_ready.emit()
+        self.server_ready.emit(self.port)
 
 
 class FastAPIWebBrowser(QMainWindow):
@@ -64,6 +87,7 @@ class FastAPIWebBrowser(QMainWindow):
         self.start_minimized = start_minimized
         self.settings = load_settings()
         self.current_theme = self.settings.get("theme", "dark")
+        self.last_settings_mod_time = os.path.getmtime(SETTINGS_FILE) if os.path.exists(SETTINGS_FILE) else 0
 
         # Set Window Icon
         import sys
@@ -170,9 +194,13 @@ class FastAPIWebBrowser(QMainWindow):
         self.loading_timer.timeout.connect(self.update_loading_animation)
         self.loading_timer.start(1000)
 
-        self.server_thread = LoadingThread()
+        self.server_thread = LoadingThread(start_port=self.port)
         self.server_thread.server_ready.connect(self.on_server_ready)
         self.server_thread.start()
+
+        # Instant theme syncing via File Watcher
+        self.settings_watcher = QFileSystemWatcher([SETTINGS_FILE])
+        self.settings_watcher.fileChanged.connect(self.poll_theme_settings)
 
         # Initialize System Tray
         self.setup_tray_icon()
@@ -282,6 +310,24 @@ class FastAPIWebBrowser(QMainWindow):
         
         self.tray_icon.show()
 
+    def poll_theme_settings(self):
+        """Check if settings file was updated (e.g. by Web UI) and apply theme changes."""
+        if not os.path.exists(SETTINGS_FILE):
+            return
+            
+        try:
+            mod_time = os.path.getmtime(SETTINGS_FILE)
+            if mod_time > self.last_settings_mod_time:
+                self.last_settings_mod_time = mod_time
+                new_settings = load_settings()
+                new_theme = new_settings.get("theme", self.current_theme)
+                
+                if new_theme != self.current_theme:
+                    self.current_theme = new_theme
+                    self.apply_theme(new_theme)
+        except Exception:
+            pass
+
     def on_tray_icon_activated(self, reason):
         if reason == QSystemTrayIcon.ActivationReason.Trigger:
             self.show_normal()
@@ -380,7 +426,8 @@ class FastAPIWebBrowser(QMainWindow):
         self.dots = (self.dots + 1) % 4
         self.loading_text.setText(f"Loading{'.' * self.dots}")
 
-    def on_server_ready(self):
+    def on_server_ready(self, port):
+        self.port = port
         if self.loading_timer.isActive():
             self.loading_timer.stop()
             self.loading_text.setText("Loading... Done!")

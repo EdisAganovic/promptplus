@@ -16,7 +16,7 @@ import threading
 import time
 
 # App Version - Change this in one place
-VERSION = "0.3"
+VERSION = "0.4"
 
 # Threading lock for file operations within the same process
 file_lock = threading.Lock()
@@ -104,20 +104,34 @@ def save_prompts(prompts):
 
 
 def load_settings():
-    """Load app settings from JSON file."""
+    """Load app settings from JSON file with error handling for corruption."""
     if os.path.exists(SETTINGS_FILE):
         try:
-            with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except Exception:
-            pass
+            with file_lock:
+                with open(SETTINGS_FILE, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"Error loading settings: {e}")
+            # If corrupted, we return defaults rather than crashing
     return {"theme": "dark", "start_with_windows": False} # Default settings
 
 
 def save_settings(settings):
-    """Save app settings to JSON file."""
-    with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
-        json.dump(settings, f, ensure_ascii=False, indent=2)
+    """Save app settings to JSON file with file locking and retries."""
+    with file_lock:
+        max_retries = 3
+        for i in range(max_retries):
+            try:
+                with open(SETTINGS_FILE, 'w', encoding='utf-8') as f:
+                    json.dump(settings, f, ensure_ascii=False, indent=2)
+                break
+            except PermissionError:
+                if i == max_retries - 1:
+                    raise
+                time.sleep(0.05)
+            except Exception as e:
+                print(f"Failed to save settings: {e}")
+                break
 
 
 def count_tokens(text):

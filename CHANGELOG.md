@@ -2,6 +2,24 @@
 
 All notable changes to PromptPlus will be documented in this file.
 
+## [0.4] - 2026-03-05
+
+### Added
+- **Quick Search Window** - Global hotkey (`Ctrl+Alt+P`) to quickly search and paste prompts into any application.
+- **Dynamic Port Discovery** - Automatically finds an available port (starting from 8080) if the default port is already in use.
+- **Robust Persistence** - Added file locking and retry logic to both prompt and settings storage to prevent data corruption.
+- **Keyboard Hook Safeguards** - Graceful handling and logging for keyboard monitoring permission failures.
+
+### Changed
+- **Optimized Dashboard Layout** - Relocated the "+ Dodaj" button next to the search bar to improve workflow speed.
+- **Alignments & Margins** - Standardized Bootstrap container hierarchy to fix right-side alignment mismatches.
+- **Quick Search UX** - Added auto-selection, single-line results preview, and enhanced keyboard navigation (Arrows/Enter).
+
+### Fixed
+- **Quick Search Thread Safety** - Implemented `QuickSearchManager` to safely marshal UI calls from background threads.
+- **Dashboard Right-Edge Gap** - Removed nested `container-fluid` discrepancies to ensure pixel-perfect vertical alignment.
+- **Pyperclip Reliability** - Added error guards and timing delays to ensure clipboard-to-paste operations are stable across slow systems.
+
 ## [0.3] - 2026-03-04
 
 ### Added

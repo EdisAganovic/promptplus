@@ -193,6 +193,12 @@ async def update_theme(theme: str = Form(...)):
     return {"status": "success", "theme": theme}
 
 
+@app.get("/open_url")
+async def open_url(url: str):
+    import webbrowser
+    webbrowser.open(url)
+    return {"status": "success"}
+
 @app.post("/update_settings")
 async def update_settings(start_with_windows: bool = Form(...)):
     from .utils import save_settings, set_start_on_boot

@@ -8,6 +8,7 @@ Classes:
 - ReplacerThread(QThread): Runs replacer in background thread
   - run(): Calls replacer.start_monitoring()
   - stop(): Calls replacer.stop_monitoring()
+- QuickSearchWindow: Standalone window for quick prompt search
 
 IMPORTANT: DO NOT CHANGE THE TEXT REPLACEMENT METHOD!
 ======================================================
@@ -23,9 +24,13 @@ import threading
 import keyboard
 import pyautogui
 import pyperclip
-from PyQt6.QtCore import QThread, QTimer
+from PyQt6.QtCore import QThread, QTimer, Qt
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, 
+                             QHBoxLayout, QLineEdit, QListWidget, 
+                             QListWidgetItem, QWidget, QLabel, QPushButton, QGraphicsDropShadowEffect)
+from PyQt6.QtGui import QFont, QPalette, QColor, QIcon
 
-from .utils import PROMPTS_FILE, load_prompts
+from .utils import PROMPTS_FILE, load_prompts, load_settings
 import os
 import json
 
@@ -78,10 +83,10 @@ class RealtimeTextReplacer:
         """OPTIMIZATION: Cache sorted keywords to avoid sorting on every keypress."""
         if self._cache_valid and self._sorted_keywords_cache is not None:
             return self._sorted_keywords_cache
-        
+
         with self.lock:
             local_prompts = dict(self.prompts)
-        
+
         self._sorted_keywords_cache = sorted(local_prompts.keys(), key=len, reverse=True)
         self._cache_valid = True
         return self._sorted_keywords_cache
@@ -90,7 +95,7 @@ class RealtimeTextReplacer:
         # OPTIMIZATION: Early exit checks before acquiring lock
         if self.is_replacing or event.event_type != keyboard.KEY_DOWN:
             return
-        
+
         # FIX: Use lock for thread-safe buffer access
         with self.lock:
             if len(event.name) == 1:
@@ -117,9 +122,9 @@ class RealtimeTextReplacer:
                     # Schedule replacement outside lock
                     QTimer.singleShot(0, lambda: self._do_replacement(keyword, replacement_text))
                     return
-            
-            if len(self.current_buffer) > 100:
-                self.current_buffer = self.current_buffer[-100:]
+
+            if len(self.current_buffer) > 50:
+                self.current_buffer = self.current_buffer[-50:]
 
     def _check_for_replacement_unlocked(self):
         """Internal method - must be called with lock held. Returns keyword if match found."""
@@ -157,8 +162,13 @@ class RealtimeTextReplacer:
         self._do_replacement(keyword, replacement_text)
 
     def start_monitoring(self):
-        print("Text Replacer is now active.")
-        keyboard.hook(self.on_key_event)
+        try:
+            keyboard.hook(self.on_key_event)
+        except Exception as e:
+            print(f"CRITICAL: Failed to hook keyboard. Text replacement will not work. Error: {e}")
+            self._running = False
+            return
+
         # OPTIMIZATION: Increased sleep interval from 0.1s to 0.2s for lower CPU usage
         # File check only happens every 10 cycles (every 2 seconds) to reduce I/O
         check_counter = 0
@@ -173,7 +183,6 @@ class RealtimeTextReplacer:
     def stop_monitoring(self):
         self._running = False
         keyboard.unhook_all()
-        print("Text Replacer stopped.")
 
 
 class ReplacerThread(QThread):
@@ -187,3 +196,312 @@ class ReplacerThread(QThread):
 
     def stop(self):
         self.replacer.stop_monitoring()
+
+
+class QuickSearchWindow(QMainWindow):
+    """Standalone window for quick prompt search with global hotkey."""
+    
+    def __init__(self, replacer):
+        # Initialize in the main thread context
+        super().__init__()
+        self.replacer = replacer
+        self.current_theme = None
+        self.init_ui()
+        
+    def init_ui(self):
+        # Window properties
+        self.setWindowTitle('Quick Search - PromptPlus')
+        self.setWindowFlags(Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
+
+        # Main widget and layout
+        self.central_widget = QWidget()
+        self.setCentralWidget(self.central_widget)
+        
+        # Add shadow effect
+        self.shadow = QGraphicsDropShadowEffect()
+        self.shadow.setBlurRadius(30)
+        self.shadow.setXOffset(0)
+        self.shadow.setYOffset(10)
+        self.central_widget.setGraphicsEffect(self.shadow)
+        
+        self.layout = QVBoxLayout(self.central_widget)
+        self.layout.setContentsMargins(15, 15, 15, 15)
+        self.layout.setSpacing(12)
+        
+        # Debounce timer for search input
+        self.search_timer = QTimer(self)
+        self.search_timer.setSingleShot(True)
+        self.search_timer.timeout.connect(lambda: self.filter_prompts(self.search_input.text()))
+        
+        # Search input layout with Close Button
+        self.search_layout = QHBoxLayout()
+        self.search_layout.setContentsMargins(0, 0, 0, 0)
+        self.search_layout.setSpacing(10)
+
+        # Search input
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText('Pretraži promptove...')
+        self.search_input.setFont(QFont('Inter', 12))
+        self.search_input.textChanged.connect(lambda: self.search_timer.start(150))
+        self.search_input.returnPressed.connect(self.insert_selected_prompt)
+
+        # Close button
+        self.close_btn = QPushButton("✕")
+        self.close_btn.setFixedSize(30, 30)
+        self.close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.close_btn.clicked.connect(self.close)
+
+        self.search_layout.addWidget(self.search_input)
+        self.search_layout.addWidget(self.close_btn)
+        
+        # Results list
+        self.results_list = QListWidget()
+        self.results_list.setFont(QFont('Inter', 11))
+        self.results_list.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.results_list.itemDoubleClicked.connect(self.insert_selected_prompt)
+        
+        # Add widgets to layout
+        self.layout.addLayout(self.search_layout)
+        self.layout.addWidget(self.results_list)
+        
+        # Set size
+        self.resize(500, 400)
+        
+        # Load prompts
+        self.all_prompts = list(self.replacer.prompts.items())
+        
+        # Apply theme styling
+        self.apply_theme()
+        
+        # Connect escape key
+        self.search_input.keyPressEvent = self.search_input_keyPressEvent
+
+    def apply_theme(self):
+        """Apply theme-specific colors and styles to the Quick Search window."""
+        self.settings = load_settings()
+        new_theme = self.settings.get("theme", "dark")
+        
+        # Optimization: Only re-apply if theme changed
+        if new_theme == self.current_theme:
+            return
+            
+        self.current_theme = new_theme
+        is_dark = self.current_theme == "dark"
+
+        # Theme Variables
+        bg_color = "#1a1b27" if is_dark else "#ffffff"
+        input_bg = "#232534" if is_dark else "#f3f4f6"
+        border_color = "#3a3f4b" if is_dark else "#e5e7eb"
+        text_primary = "#e6e6ff" if is_dark else "#1f2937"
+        text_secondary = "#9ca3af" if is_dark else "#6b7280"
+        accent_color = "#6366f1"
+        hover_bg = "#2a2c3d" if is_dark else "#f9fafb"
+
+        # Update shadow
+        self.shadow.setColor(QColor(0, 0, 0, 100 if is_dark else 40))
+
+        self.central_widget.setStyleSheet(f"""
+            QWidget {{
+                background-color: {bg_color};
+                border-radius: 0px;
+                border: 1px solid {border_color};
+                color: {text_primary};
+            }}
+        """)
+
+        self.search_input.setStyleSheet(f"""
+            QLineEdit {{
+                background-color: {input_bg};
+                border: 1px solid {border_color};
+                border-radius: 0px;
+                padding: 12px 15px;
+                color: {text_primary};
+                font-size: 14px;
+            }}
+            QLineEdit:focus {{
+                border: 2px solid {accent_color};
+                background-color: {bg_color};
+            }}
+        """)
+
+        self.close_btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: transparent;
+                color: {text_secondary};
+                border: none;
+                font-size: 16px;
+                font-weight: bold;
+            }}
+            QPushButton:hover {{
+                color: #ef4444;
+                background-color: {input_bg};
+                border-radius: 4px;
+            }}
+        """)
+
+        self.results_list.setStyleSheet(f"""
+            QListWidget {{
+                background-color: transparent;
+                border: none;
+                outline: none;
+                padding: 5px 0px;
+            }}
+            QListWidget::item {{
+                padding: 12px 10px;
+                border-radius: 0px;
+                margin-bottom: 4px;
+                color: {text_primary};
+            }}
+            QListWidget::item:hover {{
+                background-color: {hover_bg};
+            }}
+            QListWidget::item:selected {{
+                background-color: {accent_color};
+                color: white;
+            }}
+            QScrollBar:vertical {{
+                border: none;
+                background: transparent;
+                width: 8px;
+                margin: 0px 0px 0px 0px;
+            }}
+            QScrollBar::handle:vertical {{
+                background: {border_color};
+                min-height: 20px;
+                border-radius: 0px;
+            }}
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {{
+                height: 0px;
+            }}
+        """)
+
+        self.results_list.itemDoubleClicked.connect(self.insert_selected_prompt)
+        
+        # Add widgets to layout
+        layout.addLayout(search_layout)
+        layout.addWidget(self.results_list)
+        
+        # Set size
+        self.resize(500, 400)
+        
+        # Load prompts
+        self.all_prompts = list(self.replacer.prompts.items())
+        self.populate_results()
+        
+        # Connect escape key
+        self.search_input.keyPressEvent = self.search_input_keyPressEvent
+    
+    def search_input_keyPressEvent(self, event):
+        if event.key() == Qt.Key.Key_Escape:
+            self.close()
+        elif event.key() == Qt.Key.Key_Return or event.key() == Qt.Key.Key_Enter:
+            self.insert_selected_prompt()
+        elif event.key() == Qt.Key.Key_Down:
+            current_row = self.results_list.currentRow()
+            if current_row < self.results_list.count() - 1:
+                self.results_list.setCurrentRow(current_row + 1)
+        elif event.key() == Qt.Key.Key_Up:
+            current_row = self.results_list.currentRow()
+            if current_row > 0:
+                self.results_list.setCurrentRow(current_row - 1)
+        else:
+            # Call the original keyPressEvent
+            QLineEdit.keyPressEvent(self.search_input, event)
+    
+    def populate_results(self):
+        """Populate the results list with all prompts."""
+        self.results_list.clear()
+        for keyword, content in self.all_prompts:
+            clean_content = content.replace('\n', ' ').replace('\r', '')
+            item_text = f" {keyword}   —   {clean_content[:60]}{'...' if len(clean_content) > 60 else ''}"
+            item = QListWidgetItem(item_text)
+            item.setData(Qt.ItemDataRole.UserRole, content)
+            self.results_list.addItem(item)
+            
+        if self.results_list.count() > 0:
+            self.results_list.setCurrentRow(0)
+            self.results_list.item(0).setSelected(True)
+    
+    def filter_prompts(self, text):
+        """Filter prompts based on search text."""
+        self.results_list.clear()
+        text = text.lower()
+        
+        for keyword, content in self.all_prompts:
+            if text in keyword.lower() or text in content.lower():
+                clean_content = content.replace('\n', ' ').replace('\r', '')
+                item_text = f" {keyword}   —   {clean_content[:60]}{'...' if len(clean_content) > 60 else ''}"
+                item = QListWidgetItem(item_text)
+                item.setData(Qt.ItemDataRole.UserRole, content)
+                self.results_list.addItem(item)
+                
+        if self.results_list.count() > 0:
+            self.results_list.setCurrentRow(0)
+            self.results_list.item(0).setSelected(True)
+    
+    def insert_selected_prompt(self):
+        """Insert the selected prompt into the active application."""
+        current_item = self.results_list.currentItem()
+        if current_item:
+            content = current_item.data(Qt.ItemDataRole.UserRole)
+            
+            # Hide the window immediately to restore OS focus to the previous application
+            self.hide()
+            QApplication.processEvents() # Force Qt to visibly close the window right away
+            
+            # Wait 150ms for the OS context switch to complete, then perform the paste
+            QTimer.singleShot(150, lambda: self._perform_paste(content))
+        else:
+            self.close()
+
+    def _perform_paste(self, content):
+        """Helper to safely manage clipboard and paste after focus is restored."""
+        try:
+            original_clipboard = pyperclip.paste()
+        except:
+            original_clipboard = ""
+            
+        try:
+            pyperclip.copy(content)
+            # Paste using Ctrl+V
+            pyautogui.hotkey('ctrl', 'v')
+        except Exception as e:
+            print(f"Error during paste: {e}")
+        finally:
+            # Wait 200ms before restoring original clipboard to ensure paste completed
+            QTimer.singleShot(200, lambda: self._restore_clipboard_and_close(original_clipboard))
+            
+    def _restore_clipboard_and_close(self, original_clipboard):
+        """Helper to clean up clipboard and fully close the window."""
+        try:
+            if original_clipboard:
+                pyperclip.copy(original_clipboard)
+        except:
+            pass
+        self.close()
+    
+    def showEvent(self, event):
+        """Center the window on the screen when shown and refresh data."""
+        super().showEvent(event)
+        
+        # Dynamically refresh theme in case user changed it in Web UI
+        self.apply_theme()
+        # Center the window
+        screen = QApplication.primaryScreen()
+        screen_geometry = screen.geometry()
+        x = (screen_geometry.width() - self.width()) // 2
+        y = (screen_geometry.height() - self.height()) // 2
+        self.move(x, y)
+        
+        # Reload fresh prompts from memory in case user edited them in main UI
+        self.all_prompts = list(self.replacer.prompts.items())
+        
+        # Reset search input for fresh open (this automatically calls filter_prompts)
+        self.search_input.clear()
+        
+        # Fallback populate just in case clear() doesn't trigger a change
+        if not self.search_input.text():
+            self.populate_results()
+            
+        self.search_input.setFocus()

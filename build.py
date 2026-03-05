@@ -14,12 +14,18 @@ if not os.path.exists(icon_path):
 else:
     icon_arg = [f'--icon={icon_path}']
 
+# UPX compression - reduces executable size by 50-70%
+# UPX should be installed separately: https://github.com/upx/upx/releases
+# Or specify custom path: upx_dir = r"C:\path\to\upx"
+upx_dir = "upx"  # Assumes UPX is in PATH
+
 # PyInstaller arguments
 args = [
     main_path,
     '--name=PromptPlus',
     '--onedir',
     '--noconsole',
+    f'--upx-dir={upx_dir}',
     '--add-data=templates;templates',
     '--add-data=static;static',
     '--add-data=icon.ico;.',

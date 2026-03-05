@@ -1,5 +1,4 @@
-# For keyboard monitoring and automation - using keyboard library which is better for special keys like CTRL
-pynput
+# For keyboard monitoring and automation
 keyboard
 
 # For GUI automation (mouse and keyboard control)
@@ -20,17 +19,8 @@ tiktoken
 # For process management to prevent multiple instances
 psutil
 
-# For JSON handling (usually part of stdlib but good to specify)
-json5
-
 # For typing hints
 typing-extensions
-
-# For Streamlit interface
-streamlit
-
-# For Gemini AI integration
-google-generativeai
 
 # For environment variable management
 python-dotenv

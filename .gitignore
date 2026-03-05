@@ -2,6 +2,8 @@
 __pycache__/
 *.py[cod]
 *$py.class
+upx-5.1.0-win64/
+QWEN.MD
 
 # C extensions
 *.so
