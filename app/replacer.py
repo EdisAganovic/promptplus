@@ -100,39 +100,46 @@ class RealtimeTextReplacer:
         return self._prompts_cache, self._keyword_lengths_cache
 
     def on_key_event(self, event):
-        # OPTIMIZATION: Early exit checks before acquiring lock
-        if self.is_replacing or event.event_type != keyboard.KEY_DOWN:
-            return
+        try:
+            # OPTIMIZATION: Early exit checks before acquiring lock
+            if self.is_replacing or event.event_type != keyboard.KEY_DOWN:
+                return
 
-        # FIX: Use lock for thread-safe buffer access
-        with self.lock:
-            if len(event.name) == 1:
-                self.current_buffer += event.name
-            elif event.name == 'space':
-                self.current_buffer += ' '
-                # Check for replacement while holding lock
-                keyword = self._check_for_replacement_unlocked()
-                if keyword:
-                    replacement_text = self.prompts.get(keyword, '')
-                    self.current_buffer = ""
-                    self.is_replacing = True
-                    # Schedule replacement outside lock
-                    threading.Thread(target=self._do_replacement, args=(keyword, replacement_text), daemon=True).start()
+            # FIX: Use lock for thread-safe buffer access
+            with self.lock:
+                # Safely check event name type and length
+                if not hasattr(event, 'name') or not isinstance(event.name, str):
                     return
-            elif event.name == 'backspace':
-                self.current_buffer = self.current_buffer[:-1]
-                # Check if the backspace revealed a valid keyword + space
-                keyword = self._check_for_replacement_unlocked()
-                if keyword:
-                    replacement_text = self.prompts.get(keyword, '')
-                    self.current_buffer = ""
-                    self.is_replacing = True
-                    # Schedule replacement outside lock
-                    threading.Thread(target=self._do_replacement, args=(keyword, replacement_text), daemon=True).start()
-                    return
+                    
+                if len(event.name) == 1:
+                    self.current_buffer += event.name
+                elif event.name == 'space':
+                    self.current_buffer += ' '
+                    # Check for replacement while holding lock
+                    keyword = self._check_for_replacement_unlocked()
+                    if keyword:
+                        replacement_text = self.prompts.get(keyword, '')
+                        self.current_buffer = ""
+                        self.is_replacing = True
+                        # Schedule replacement outside lock
+                        threading.Thread(target=self._do_replacement, args=(keyword, replacement_text), daemon=True).start()
+                        return
+                elif event.name == 'backspace':
+                    self.current_buffer = self.current_buffer[:-1]
+                    # Check if the backspace revealed a valid keyword + space
+                    keyword = self._check_for_replacement_unlocked()
+                    if keyword:
+                        replacement_text = self.prompts.get(keyword, '')
+                        self.current_buffer = ""
+                        self.is_replacing = True
+                        # Schedule replacement outside lock
+                        threading.Thread(target=self._do_replacement, args=(keyword, replacement_text), daemon=True).start()
+                        return
 
-            if len(self.current_buffer) > 50:
-                self.current_buffer = self.current_buffer[-50:]
+                if len(self.current_buffer) > 50:
+                    self.current_buffer = self.current_buffer[-50:]
+        except Exception as e:
+            print(f"Error processing key event: {e}")
 
     def _check_for_replacement_unlocked(self):
         """Internal method - must be called with lock held. Returns keyword if match found."""
@@ -176,7 +183,13 @@ class RealtimeTextReplacer:
             try:
                 pyperclip.copy(replacement_text)
                 pyautogui.hotkey('ctrl', 'v')
+            except Exception as e:
+                print(f"Error during replacement paste: {e}")
             finally:
+                # Safety releases: prevent PyAutoGUI from leaving modifiers down
+                for key in ['ctrl', 'shift', 'alt', 'v']:
+                    pyautogui.keyUp(key)
+
                 # Slight delay to ensure Ctrl+V completes before restoring old clipboard
                 time.sleep(0.05)
                 try:
@@ -184,6 +197,8 @@ class RealtimeTextReplacer:
                         pyperclip.copy(original_clipboard)
                 except Exception:
                     pass
+        except Exception as e:
+            print(f"Error in _do_replacement: {e}")
         finally:
             self.is_replacing = False
 
@@ -505,6 +520,10 @@ class QuickSearchWindow(QMainWindow):
         except Exception as e:
             print(f"Error during paste: {e}")
         finally:
+            # explicitly release keys just in case pyautogui leaves them down
+            for key in ['ctrl', 'shift', 'alt', 'v']:
+                pyautogui.keyUp(key)
+                
             # Wait 200ms before restoring original clipboard to ensure paste completed
             QTimer.singleShot(200, lambda: self._restore_clipboard_and_close(original_clipboard))
             

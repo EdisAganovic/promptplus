@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     # Setup global hotkey to emit the signal and suppress it from OS
     try:
-        keyboard.add_hotkey('ctrl+alt+p', trigger_manager.show_search.emit, suppress=True)
+        keyboard.add_hotkey('ctrl+alt+p', trigger_manager.show_search.emit)
     except Exception as e:
         print(f"WARNING: Global hotkey 'ctrl+alt+p' could not be registered. Error: {e}")
 
