@@ -40,11 +40,12 @@ class RealtimeTextReplacer:
         self.prompts = self._load_prompts_for_replacer()
         self.current_buffer = ""
         self.is_replacing = False
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
         self.last_file_mod_time = self._get_file_mod_time()
         self._running = True
-        # OPTIMIZATION: Cache sorted keywords to avoid sorting on every check
-        self._sorted_keywords_cache = None
+        # OPTIMIZATION: Cache set of keyword lengths and the prompts dictionary for O(1) lookups
+        self._keyword_lengths_cache = set()
+        self._prompts_cache = {}
         self._cache_valid = False
 
     def _load_prompts_for_replacer(self):
@@ -79,17 +80,24 @@ class RealtimeTextReplacer:
                     self._cache_valid = False
             self.last_file_mod_time = current_file_mod_time
 
-    def _get_sorted_keywords(self):
-        """OPTIMIZATION: Cache sorted keywords to avoid sorting on every keypress."""
-        if self._cache_valid and self._sorted_keywords_cache is not None:
-            return self._sorted_keywords_cache
+    def _get_lookup_caches(self):
+        """OPTIMIZATION: Returns (prompts_dict, keyword_lengths_set) for O(1) hash map matching."""
+        if self._cache_valid:
+            return self._prompts_cache, self._keyword_lengths_cache
 
-        with self.lock:
-            local_prompts = dict(self.prompts)
+        local_prompts = dict(self.prompts)
 
-        self._sorted_keywords_cache = sorted(local_prompts.keys(), key=len, reverse=True)
+        # Cache lengths of all triggers to avoid checking irrelevant lengths
+        lengths = set()
+        for keyword in local_prompts.keys():
+            # We match keyword + ' '
+            lengths.add(len(keyword) + 1)
+            
+        self._prompts_cache = local_prompts
+        self._keyword_lengths_cache = lengths
         self._cache_valid = True
-        return self._sorted_keywords_cache
+        
+        return self._prompts_cache, self._keyword_lengths_cache
 
     def on_key_event(self, event):
         # OPTIMIZATION: Early exit checks before acquiring lock
@@ -109,7 +117,7 @@ class RealtimeTextReplacer:
                     self.current_buffer = ""
                     self.is_replacing = True
                     # Schedule replacement outside lock
-                    QTimer.singleShot(0, lambda: self._do_replacement(keyword, replacement_text))
+                    threading.Thread(target=self._do_replacement, args=(keyword, replacement_text), daemon=True).start()
                     return
             elif event.name == 'backspace':
                 self.current_buffer = self.current_buffer[:-1]
@@ -120,7 +128,7 @@ class RealtimeTextReplacer:
                     self.current_buffer = ""
                     self.is_replacing = True
                     # Schedule replacement outside lock
-                    QTimer.singleShot(0, lambda: self._do_replacement(keyword, replacement_text))
+                    threading.Thread(target=self._do_replacement, args=(keyword, replacement_text), daemon=True).start()
                     return
 
             if len(self.current_buffer) > 50:
@@ -128,26 +136,54 @@ class RealtimeTextReplacer:
 
     def _check_for_replacement_unlocked(self):
         """Internal method - must be called with lock held. Returns keyword if match found."""
-        if self.is_replacing:
+        if self.is_replacing or not self.current_buffer:
             return None
-        sorted_keywords = self._get_sorted_keywords()
-        for keyword in sorted_keywords:
-            trigger_phrase = keyword + ' '
-            if self.current_buffer.endswith(trigger_phrase):
-                return keyword
+            
+        prompts_cache, lengths_cache = self._get_lookup_caches()
+        if not prompts_cache:
+            return None
+            
+        buffer_len = len(self.current_buffer)
+        
+        # Test substrings backwards matching exact cached lengths
+        # Sort lengths ascending to match shortest trigger first, or descending for longest.
+        # Often longest matching is preferred if triggers overlap (e.g. ":e " vs ":em ")
+        for length in sorted(lengths_cache, reverse=True):
+            if buffer_len >= length:
+                # Slice the end of the buffer to match the target length
+                suffix = self.current_buffer[-length:]
+                # All triggers end with a space
+                if suffix.endswith(' '):
+                    keyword = suffix[:-1]
+                    if keyword in prompts_cache:
+                        return keyword
+                    
         return None
 
     def _do_replacement(self, keyword, replacement_text):
         """Perform the actual text replacement."""
+        # Wait slightly to ensure the physical trigger key (like space) has fully registered in the target app
+        time.sleep(0.05)
         try:
             total_length = len(keyword) + 1
-            pyautogui.press('backspace', presses=total_length, interval=0.003)
-            original_clipboard = pyperclip.paste()
+            pyautogui.press('backspace', presses=total_length, interval=0.015)
+            
+            try:
+                original_clipboard = pyperclip.paste()
+            except Exception:
+                original_clipboard = ""
+                
             try:
                 pyperclip.copy(replacement_text)
                 pyautogui.hotkey('ctrl', 'v')
             finally:
-                pyperclip.copy(original_clipboard)
+                # Slight delay to ensure Ctrl+V completes before restoring old clipboard
+                time.sleep(0.05)
+                try:
+                    if original_clipboard:
+                        pyperclip.copy(original_clipboard)
+                except Exception:
+                    pass
         finally:
             self.is_replacing = False
 

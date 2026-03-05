@@ -16,6 +16,7 @@ All notable changes to PromptPlus will be documented in this file.
 - **Quick Search UX** - Added auto-selection, single-line results preview, and enhanced keyboard navigation (Arrows/Enter).
 
 ### Fixed
+- **Text Replacement Leftover Character** - Fixed an issue where the first character of the trigger was not deleted by adding brief delays and increasing the backspace interval to give the OS time to process keys.
 - **Quick Search Thread Safety** - Implemented `QuickSearchManager` to safely marshal UI calls from background threads.
 - **Dashboard Right-Edge Gap** - Removed nested `container-fluid` discrepancies to ensure pixel-perfect vertical alignment.
 - **Pyperclip Reliability** - Added error guards and timing delays to ensure clipboard-to-paste operations are stable across slow systems.
