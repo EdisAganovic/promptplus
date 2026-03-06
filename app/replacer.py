@@ -426,22 +426,6 @@ class QuickSearchWindow(QMainWindow):
                 height: 0px;
             }}
         """)
-
-        self.results_list.itemDoubleClicked.connect(self.insert_selected_prompt)
-        
-        # Add widgets to layout
-        layout.addLayout(search_layout)
-        layout.addWidget(self.results_list)
-        
-        # Set size
-        self.resize(500, 400)
-        
-        # Load prompts
-        self.all_prompts = list(self.replacer.prompts.items())
-        self.populate_results()
-        
-        # Connect escape key
-        self.search_input.keyPressEvent = self.search_input_keyPressEvent
     
     def search_input_keyPressEvent(self, event):
         if event.key() == Qt.Key.Key_Escape:

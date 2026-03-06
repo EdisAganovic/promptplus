@@ -38,9 +38,11 @@ class QuickSearchManager(QObject):
         _quick_search_window.raise_()
         _quick_search_window.activateWindow()
         
-        # Reset and focus the input field explicitly
-        _quick_search_window.search_input.clear()
-        _quick_search_window.search_input.setFocus()
+        # Reset and focus the input field explicitly after a tiny delay
+        # to ensure the keyboard shortcut 'p' event is fully swallowed by the OS
+        from PyQt6.QtCore import QTimer
+        QTimer.singleShot(50, _quick_search_window.search_input.clear)
+        QTimer.singleShot(60, _quick_search_window.search_input.setFocus)
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
@@ -58,7 +60,8 @@ if __name__ == "__main__":
 
     # Setup global hotkey to emit the signal and suppress it from OS
     try:
-        keyboard.add_hotkey('ctrl+alt+p', trigger_manager.show_search.emit)
+        # Use suppress=True to prevent the 'p' from being typed into the search box
+        keyboard.add_hotkey('ctrl+alt+p', trigger_manager.show_search.emit, suppress=True)
     except Exception as e:
         print(f"WARNING: Global hotkey 'ctrl+alt+p' could not be registered. Error: {e}")
 
