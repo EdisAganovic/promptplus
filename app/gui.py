@@ -34,7 +34,7 @@ class LoadingThread(QThread):
     def run(self):
         """Run the FastAPI server on an available port."""
         import socket
-        
+
         # Find an available port
         current_port = self.port
         while current_port < 8100:
@@ -45,16 +45,20 @@ class LoadingThread(QThread):
                     break
                 except socket.error:
                     current_port += 1
-        
+
         def start_server():
             # In frozen noconsole app, stdout/stderr might be None
             # causing uvicorn default logger to crash
             config = uvicorn.Config(
-                app, 
-                host="127.0.0.1", 
-                port=self.port, 
+                app,
+                host="127.0.0.1",
+                port=self.port,
                 log_config=None,
-                log_level="error"  # Suppress all non-error messages
+                log_level="error",  # Suppress all non-error messages
+                # OPTIMIZATION: Reduce startup time with fewer workers and faster response
+                workers=1,
+                loop="asyncio",
+                http="auto"
             )
             server = uvicorn.Server(config)
             server.run()
@@ -62,20 +66,22 @@ class LoadingThread(QThread):
         server_thread = threading.Thread(target=start_server, daemon=True)
         server_thread.start()
 
-        # Faster initial check with exponential backoff for slow CPUs
-        max_attempts = 60
+        # OPTIMIZATION: Even faster initial check with reduced timeout and quicker polling
+        max_attempts = 50  # Reduced from 60
         attempts = 0
-        sleep_time = 0.3  # Start faster
+        sleep_time = 0.15  # Start even faster, reduced from 0.3
+        timeout = 0.3  # Reduced timeout for faster response
+        
         while attempts < max_attempts:
             try:
-                response = requests.get(f"http://127.0.0.1:{self.port}", timeout=0.5)
+                response = requests.get(f"http://127.0.0.1:{self.port}", timeout=timeout)
                 if response.status_code == 200:
                     self.server_ready.emit(self.port)
                     return
             except requests.exceptions.RequestException:
                 time.sleep(sleep_time)
                 attempts += 1
-                sleep_time = min(sleep_time * 1.2, 0.8)  # Cap at 0.8s
+                sleep_time = min(sleep_time * 1.15, 0.5)  # Slower increase, cap at 0.5s
 
         self.server_ready.emit(self.port)
 
@@ -188,16 +194,40 @@ class FastAPIWebBrowser(QMainWindow):
         # Install event filter on the app to capture all mouse move events
         QApplication.instance().installEventFilter(self)
 
-        # OPTIMIZATION: Faster loading animation (400ms) for better feel
+        # OPTIMIZATION: Even faster loading animation (300ms) for better feel and responsiveness
         self.loading_timer = QTimer(self)
         self.dots = 0
         self.loading_timer.timeout.connect(self.update_loading_animation)
-        self.loading_timer.start(400)
+        self.loading_timer.start(300)  # Reduced from 400ms to 300ms for faster animation
+
+        # OPTIMIZATION: Pre-load resources in parallel with server startup
+        self.preload_resources()
+
+        # Setup settings watcher after preloading
+        self.setup_settings_watcher()
 
         self.server_thread = LoadingThread(start_port=self.port)
         self.server_thread.server_ready.connect(self.on_server_ready)
         self.server_thread.start()
 
+    def preload_resources(self):
+        """Pre-load commonly used resources during startup."""
+        # Pre-load the icon to avoid delays later
+        import sys
+        if getattr(sys, 'frozen', False):
+            root_dir = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
+        else:
+            root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+        icon_path = os.path.join(root_dir, "icon.ico")
+        if os.path.exists(icon_path):
+            self.preloaded_icon = QIcon(icon_path)
+        
+        # Pre-load settings to avoid delays later
+        self.settings = load_settings()
+
+    def setup_settings_watcher(self):
+        """Setup the settings watcher after settings are loaded."""
         # Instant theme syncing via File Watcher
         self.settings_watcher = QFileSystemWatcher([SETTINGS_FILE])
         self.settings_watcher.fileChanged.connect(self.poll_theme_settings)

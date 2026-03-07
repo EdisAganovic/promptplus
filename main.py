@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # Check for --minimize flag
     start_minimized = "--minimize" in sys.argv
 
-    # Start the text replacer in a background thread
+    # OPTIMIZATION: Start the text replacer in a background thread earlier for parallel processing
     replacer = RealtimeTextReplacer()
     _replacer_thread = ReplacerThread(replacer)
     _replacer_thread.start()
@@ -65,9 +65,14 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"WARNING: Global hotkey 'ctrl+alt+p' could not be registered. Error: {e}")
 
+    # OPTIMIZATION: Create the window in parallel with server startup
     window = FastAPIWebBrowser(start_minimized=start_minimized)
+    
+    # OPTIMIZATION: Show window immediately to provide instant visual feedback
     if not start_minimized:
         window.show()
+        # Process events to ensure the loading screen appears immediately
+        app.processEvents()
 
     # Handle cleanup on exit
     def cleanup():
