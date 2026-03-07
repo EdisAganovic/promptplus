@@ -23,9 +23,14 @@
 
 <body class="d-flex flex-column min-vh-100">
     <div class="loading-overlay" id="loadingOverlay">
-        <div class="text-center">
-            <div class="spinner-border text-primary mb-3" role="status"></div>
-            <div class="h5 fw-bold">PromptPlus Loading...</div>
+        <div class="loading-content text-center">
+            <div class="loader-logo mb-4">
+                <i class="fas fa-bolt fa-3x" style="color: var(--accent-primary);"></i>
+            </div>
+            <div class="loader-bar-container">
+                <div class="loader-bar"></div>
+            </div>
+            <div class="loader-status mt-3">Sređivanje promptova...</div>
         </div>
     </div>
 
@@ -70,7 +75,10 @@
                                 <div class="search-input-wrapper flex-grow-1">
                                     <i class="fas fa-search search-icon"></i>
                                     <input type="text" id="searchInput" class="search-input w-100"
-                                        placeholder="Pretraži promptove">
+                                        placeholder="Pretraži promptove (Ctrl+Alt+P)">
+                                    <div class="shortcut-hint d-none d-md-flex align-items-center gap-1 me-2">
+                                        <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd>
+                                    </div>
                                     <button class="search-clear" type="button" id="searchClear">
                                         <i class="fas fa-times"></i>
                                     </button>
@@ -265,12 +273,21 @@
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body py-4">
-                    <div class="form-check form-switch mb-3">
+                    <div class="form-check form-switch mb-4">
                         <input class="form-check-input" type="checkbox" id="startWithWindowsCheck" {% if
                             start_with_windows %}checked{% endif %}>
                         <label class="form-check-label" for="startWithWindowsCheck">Pokreni sa Windows-om</label>
                         <div class="form-text">Aplikacija će se automatski pokrenuti minimizirana pri prijavi na
                             Windows.</div>
+                    </div>
+                    
+                    <div class="border-top pt-3 mt-3">
+                        <h6 class="fw-bold mb-2">Globalne prečice</h6>
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="small text-muted">Quick Search:</span>
+                            <span><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>P</kbd></span>
+                        </div>
+                        <div class="form-text mt-1">Ova prečica radi iz bilo koje aplikacije dok je PromptPlus pokrenut.</div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
@@ -314,6 +331,14 @@
                         <i class="fas fa-bolt fa-3x mb-3" style="color: var(--accent-primary);"></i>
                         <h4 class="fw-bold mb-1">PromptPlus v{{ version }}</h4>
                         <p class="text-muted"><em>by Edis Aganović</em></p>
+                    </div>
+                    <hr class="my-4" style="opacity: 0.1;">
+                    <div class="mb-4">
+                        <p class="small text-muted mb-2">Globalna prečica (Bilo gdje):</p>
+                        <div class="d-flex justify-content-center gap-2 mb-2">
+                            <kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>P</kbd>
+                        </div>
+                        <p class="small text-muted">Otvara brzu pretragu promptova iz bilo koje aplikacije.</p>
                     </div>
                     <hr class="my-4" style="opacity: 0.1;">
                     <div class="mb-4">
@@ -415,10 +440,31 @@
             const overlay = document.getElementById('loadingOverlay');
             if (overlay) {
                 overlay.classList.add('fade-out');
-                setTimeout(() => overlay.remove(), 500);
+                // Synchronized with CSS transition (0.4s)
+                setTimeout(() => overlay.remove(), 400);
             }
             document.getElementById('searchInput').focus();
         });
+
+        // Dynamic status for loader
+        (function() {
+            const status = document.querySelector('.loader-status');
+            if (!status) return;
+            const messages = ['Sređivanje promptova...', 'Učitavanje baze...', 'Skoro spremno...', 'PromptPlus se pali...'];
+            let i = 0;
+            const interval = setInterval(() => {
+                if (!document.getElementById('loadingOverlay')) {
+                    clearInterval(interval);
+                    return;
+                }
+                status.style.opacity = '0';
+                setTimeout(() => {
+                    i = (i + 1) % messages.length;
+                    status.textContent = messages[i];
+                    status.style.opacity = '1';
+                }, 200);
+            }, 1000);
+        })();
 
         // Delete Confirmation Logic
         const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));

@@ -188,11 +188,11 @@ class FastAPIWebBrowser(QMainWindow):
         # Install event filter on the app to capture all mouse move events
         QApplication.instance().installEventFilter(self)
 
-        # OPTIMIZATION: Slower loading animation (1s instead of 500ms) for slow CPUs
+        # OPTIMIZATION: Faster loading animation (400ms) for better feel
         self.loading_timer = QTimer(self)
         self.dots = 0
         self.loading_timer.timeout.connect(self.update_loading_animation)
-        self.loading_timer.start(1000)
+        self.loading_timer.start(400)
 
         self.server_thread = LoadingThread(start_port=self.port)
         self.server_thread.server_ready.connect(self.on_server_ready)
@@ -430,11 +430,11 @@ class FastAPIWebBrowser(QMainWindow):
         self.port = port
         if self.loading_timer.isActive():
             self.loading_timer.stop()
-            self.loading_text.setText("Loading... Done!")
-            QTimer.singleShot(500, self.show_browser)
+            self.loading_text.setText("Ready!")
+            QTimer.singleShot(100, self.show_browser)
             # FIX: Respect start_minimized flag - don't show window if minimized
             if not self.start_minimized:
-                QTimer.singleShot(600, self.show)
+                QTimer.singleShot(150, self.show)
 
     def show_browser(self):
         self.loading_widget.hide()

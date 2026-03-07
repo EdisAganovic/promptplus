@@ -144,6 +144,33 @@ body {
     overflow-x: hidden;
 }
 
+/* Keyboard Shortcut Styling */
+kbd {
+    background-color: var(--bg-tertiary);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.2), inset 0 0 0 1px var(--bg-card);
+    color: var(--text-primary);
+    display: inline-block;
+    font-family: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1;
+    padding: 3px 5px;
+    white-space: nowrap;
+}
+
+.shortcut-hint {
+    opacity: 0.6;
+    transition: opacity 0.2s ease;
+    user-select: none;
+    pointer-events: none;
+}
+
+.search-input-wrapper:focus-within .shortcut-hint {
+    opacity: 0.9;
+}
+
 /* ===========================================
    Navbar
    =========================================== */
@@ -687,12 +714,73 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.loader-status {
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    letter-spacing: 0.5px;
+    transition: opacity 0.2s ease;
+}
+
+.loading-content {
+    animation: loader-pulse 2s infinite ease-in-out;
+}
+
+.loader-bar-container {
+    width: 200px;
+    height: 4px;
+    background: var(--bg-tertiary);
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+.loader-bar {
+    width: 40%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+    border-radius: 10px;
+    animation: loader-slide 1.5s infinite ease-in-out;
+}
+
+@keyframes loader-slide {
+    0% {
+        transform: translateX(-100%);
+        width: 30%;
+    }
+
+    50% {
+        width: 60%;
+    }
+
+    100% {
+        transform: translateX(250%);
+        width: 30%;
+    }
+}
+
+@keyframes loader-pulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.9;
+    }
+
+    50% {
+        transform: scale(1.02);
+        opacity: 1;
+    }
 }
 
 .loading-overlay.fade-out {
     opacity: 0;
+    filter: blur(10px);
+    transform: scale(1.1);
     pointer-events: none;
-    transition: opacity 0.3s ease;
 }
 
 /* ===========================================
