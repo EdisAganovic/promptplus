@@ -2,6 +2,11 @@
 
 All notable changes to PromptPlus will be documented in this file.
 
+## [0.5] - 2026-04-30
+
+### Changed
+- Fixes
+
 ## [0.4] - 2026-03-05
 
 ### Added

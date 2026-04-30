@@ -16,7 +16,7 @@ import threading
 import time
 
 # App Version - Change this in one place
-VERSION = "0.4"
+VERSION = "0.5"
 
 # Threading lock for file operations within the same process
 file_lock = threading.Lock()

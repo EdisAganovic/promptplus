@@ -346,7 +346,7 @@ class QuickSearchWindow(QMainWindow):
         border_color = "#3a3f4b" if is_dark else "#e5e7eb"
         text_primary = "#e6e6ff" if is_dark else "#1f2937"
         text_secondary = "#9ca3af" if is_dark else "#6b7280"
-        accent_color = "#6366f1"
+        accent_color = "#34d399" if is_dark else "#10b981"
         hover_bg = "#2a2c3d" if is_dark else "#f9fafb"
 
         # Update shadow

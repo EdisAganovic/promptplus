@@ -1,40 +1,40 @@
-# PromptPlus - Bosanski Realtime Prompt Replacer
+# PromptPlus - Real-time Prompt Replacer
 
-## Opis
-Alat za upravljanje promptima sa ključnim riječima koje se automatski zamjenjuju u realnom vremenu dok kucate u bilo kojoj aplikaciji.
+## Description
+A tool for managing prompts with keywords that are automatically replaced in real-time as you type in any application.
 
-## Funkcionalnosti
-- Definisanje prompta sa ključnim riječima (npr. :prevedi, :sumiraj)
-- Automatska zamjena ključnih riječi dok kucate u bilo kojoj aplikaciji
-- Upravljanje promptima kroz web interfejs (FastAPI)
-- Kompatibilnost sa Gemini AI modelima
-- Mogućnost postavljanja varijabli okoline (API ključeva)
-- Animirani loading ekran sa "Loading..." tekstom i tačkama pri pokretanju aplikacije
-- Borderless prozor dizajn sa dugmićima za minimizaciju, maksimizaciju i zatvaranje
+## Features
+- Define prompts with keywords (e.g., :translate, :summarize)
+- Automatic keyword replacement as you type in any application
+- Manage prompts through a web interface (FastAPI)
+- Compatibility with Gemini AI models
+- Ability to set environment variables (API keys)
+- Animated loading screen with "Loading..." text and dots when the application starts
+- Borderless window design with buttons for minimization, maximization, and closing
 
-## Korištenje
-1. Pokrenite aplikaciju: `python ui.py`
-2. UI će se otvoriti u prozoru (backend na `http://127.0.0.1:8080`)
-3. Dodajte svoje prompte sa ključnim riječima
-4. Text replacer se automatski pokreće u pozadini
+## Usage
+1. Start the application: `python ui.py`
+2. The UI will open in a window (backend at `http://127.0.0.1:8080`)
+3. Add your prompts with keywords
+4. The text replacer automatically runs in the background
 
-## Instalacija
+## Installation
 ```
 uv pip install -r requirements.txt
 ```
 
-## Pokretanje
+## Running
 ```
 python ui.py
 ```
 
-## Konfiguracija
-- Aplikacija koristi `.env` fajl za pohranu API ključeva i varijabli okoline
-- Ako ne postoji `.env` fajl, biće automatski kreiran sa primjerima
+## Configuration
+- The application uses a `.env` file to store API keys and environment variables
+- If a `.env` file does not exist, it will be automatically created with examples
 
-## Napomene
-- Aplikacija mora imati dozvole za praćenje tastature i simulaciju pritiska tipki
-- Prilikom zamjene, originalni sadržaj clipboarda se čuva i vraća nakon zamjene
-- Aplikacija koristi fajl prompts.json za čuvanje prompta između sesija
-- Za najbolje iskustvo, koristite ključne riječi koje se neće pojaviti slučajno u normalnom tekstu
-- Web interfejs koristi FastAPI umjesto Streamlita zbog problema sa kompilacijom u EXE
+## Notes
+- The application must have permissions for keyboard monitoring and keypress simulation
+- During replacement, the original clipboard content is saved and restored after replacement
+- The application uses the `prompts.json` file to save prompts between sessions
+- For the best experience, use keywords that will not appear accidentally in normal text
+- The web interface uses FastAPI instead of Streamlit due to compilation issues into EXE
