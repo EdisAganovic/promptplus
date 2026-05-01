@@ -1,5 +1,6 @@
 # For keyboard monitoring and automation
 keyboard
+pynput
 
 # For GUI automation (mouse and keyboard control)
 pyautogui

@@ -4,8 +4,12 @@ from PyQt6.QtWidgets import QApplication
 from PyQt6.QtCore import QObject, pyqtSignal, Qt
 from app.gui import FastAPIWebBrowser
 from app.replacer import RealtimeTextReplacer, ReplacerThread, QuickSearchWindow
-import keyboard
 import threading
+
+if sys.platform == 'darwin':
+    from pynput import keyboard as _pynput_kb
+else:
+    import keyboard
 
 # Add current directory to sys.path to ensure modules are found
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -58,12 +62,27 @@ if __name__ == "__main__":
     # Setup cross-thread trigger using our Custom Manager
     trigger_manager = QuickSearchManager(replacer)
 
-    # Setup global hotkey to emit the signal and suppress it from OS
-    try:
-        # Use suppress=True to prevent the 'p' from being typed into the search box
-        keyboard.add_hotkey('ctrl+alt+p', trigger_manager.show_search.emit, suppress=True)
-    except Exception as e:
-        print(f"WARNING: Global hotkey 'ctrl+alt+p' could not be registered. Error: {e}")
+    # Setup global hotkey — platform-specific backend
+    _pynput_hotkey_listener = None
+    if sys.platform == 'darwin':
+        try:
+            _hotkey = _pynput_kb.HotKey(
+                _pynput_kb.HotKey.parse('<ctrl>+<alt>+p'),
+                trigger_manager.show_search.emit
+            )
+            _pynput_hotkey_listener = _pynput_kb.Listener(
+                on_press=_hotkey.press,
+                on_release=_hotkey.release
+            )
+            _pynput_hotkey_listener.start()
+        except Exception as e:
+            print(f"WARNING: Global hotkey 'ctrl+alt+p' could not be registered. Error: {e}")
+    else:
+        try:
+            # Use suppress=True to prevent the 'p' from being typed into the search box
+            keyboard.add_hotkey('ctrl+alt+p', trigger_manager.show_search.emit, suppress=True)
+        except Exception as e:
+            print(f"WARNING: Global hotkey 'ctrl+alt+p' could not be registered. Error: {e}")
 
     # OPTIMIZATION: Create the window in parallel with server startup
     window = FastAPIWebBrowser(start_minimized=start_minimized)
@@ -83,8 +102,12 @@ if __name__ == "__main__":
         if _replacer_thread:
             _replacer_thread.stop()
             _replacer_thread.wait(2000)
-        # Unregister hotkeys
-        keyboard.unhook_all()
+        # Unregister hotkeys — platform-specific
+        if sys.platform == 'darwin':
+            if _pynput_hotkey_listener:
+                _pynput_hotkey_listener.stop()
+        else:
+            keyboard.unhook_all()
 
     app.aboutToQuit.connect(cleanup)
 
