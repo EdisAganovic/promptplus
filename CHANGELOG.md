@@ -2,10 +2,25 @@
 
 All notable changes to PromptPlus will be documented in this file.
 
-## [0.5] - 2026-04-30
+## [0.5] - 2026-05-02
+
+### Added
+- **Thread-Safe UI Bridge** - Implemented `QuickSearchManager` using `pyqtSignal` to safely trigger UI actions from background threads, eliminating potential crashes during global hotkey activation.
+- **Enhanced Quick Search** - Added `suppress=True` to the `Ctrl+Alt+P` hotkey to prevent trigger characters from leaking into the active application.
+- **Improved Focus Management** - Added micro-delays using `QTimer` to ensure the Quick Search input field consistently gains focus after the window appears.
+- **Suppress Qt Logging** - Disabled redundant QPA console warnings for a cleaner terminal output.
 
 ### Changed
-- Fixes
+- **Parallel Startup Optimization** - Refactored `main.py` to initialize the text replacer thread and GUI window in parallel, significantly reducing perceived startup time.
+- **O(1) Trigger Lookups** - Optimized the replacement engine with a keyword length cache and hash map matching, drastically reducing CPU usage during typing.
+- **Robust Path Handling** - Improved `utils.py` to correctly handle data storage in `AppData/Local` when running as a compiled executable, ensuring persistence across updates.
+- **Enhanced Paste Reliability** - Added explicit `keyUp` safety releases for modifier keys (Ctrl, Alt, Shift) to prevent "stuck keys" after a replacement.
+- **Performance Polishing** - Throttled file modification checks to once every 2 seconds to minimize disk I/O.
+
+### Fixed
+- **UI Thread Access Errors** - Resolved intermittent crashes when opening the Quick Search window from a background listener.
+- **Clipboard Restoration Race Condition** - Increased restoration delays to ensure the system clipboard is correctly restored after pasting a prompt.
+- **Data Corruption Guards** - Added retry logic and file locking for settings storage to prevent JSON corruption during simultaneous access.
 
 ## [0.4] - 2026-03-05
 

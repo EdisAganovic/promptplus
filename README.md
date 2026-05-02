@@ -18,6 +18,8 @@ A tool for managing prompts with keywords that are automatically replaced in rea
 3. Add your prompts with keywords
 4. The text replacer automatically runs in the background
 
+![screenshot](screenshot.png)
+
 ## Installation
 ```
 uv pip install -r requirements.txt

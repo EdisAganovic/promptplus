@@ -2,6 +2,13 @@
 
 ## ✅ Completed / Fixed
 
+- [x] **Thread-Safe UI Bridge** - Fixed: `QuickSearchManager` with signals for safe cross-thread UI calls
+- [x] **Enhanced Quick Search** - Added `suppress=True` to hotkey and better focus management
+- [x] **O(1) Keyword Lookups** - Optimized engine with length cache and hash map matching
+- [x] **Parallel Startup** - Initializing replacer and GUI in parallel for faster launch
+- [x] **Theme Sync Between Web UI and Qt Window** - Fixed: `QFileSystemWatcher` triggers `apply_theme()` on settings change
+- [x] **Robust Path Handling** - Data stored in `AppData/Local` for compiled executable
+- [x] **Suppress Qt Logging** - Disabled redundant console warnings
 - [x] **Event Filter Memory Leak** - Fixed: Event filter removed on window close
 - [x] **Cursor Position Cache** - Fixed: `_last_cursor_pos` reset on maximize/resize
 - [x] **Keyword Collision on Edit** - Fixed: API now checks for existing keywords before overwrite
@@ -12,12 +19,10 @@
 - [x] **UPX Compression** - Added to build.py for 50-70% smaller executable
 - [x] **Remove Body Transitions** - Removed navbar transition to prevent repaints on theme switch
 - [x] **Remove Unused CSS Variables** - Removed: --navbar-bg, --glass-blur, --glass-border
-
----
-
-## 🐛 Bug Fixes
-
-- [x] **Theme Sync Between Web UI and Qt Window** - When theme is toggled in browser, Qt window's `apply_theme()` is not called (requires WebSocket or polling)
+- [x] **Buffer Size Limit** - Reduced from 100 to 50 characters for faster checks
+- [x] **Single Dynamic Modal** - Replaced N edit modals with one reusable modal
+- [x] **Lazy Load Modals** - Only create modals when needed (reduced from N+4 to 5 modals)
+- [x] **Search Input Debouncing** - Add 150ms delay before filtering runs
 
 ---
 
@@ -29,18 +34,12 @@
 - [ ] **Reduce Backspace Interval** - Change from 0.003s to 0.001s per character
 - [ ] **Skip Clipboard Restore** - Only restore if original content differs
 
-### Frontend (Web UI)
-- [x] **Single Dynamic Modal** - Replaced N edit modals with one reusable modal
-- [x] **Lazy Load Modals** - Only create modals when needed (reduced from N+4 to 5 modals)
-- [x] **Search Input Debouncing** - Add 150ms delay before filtering runs
-
 ### CSS/Styles
 - [ ] **Remove Unused CSS Variables** - Clean up blob animation constants
 - [ ] **Remove Body Transitions** - `transition: background-color 0.2s` causes repaints on theme switch
 - [ ] **Minify CSS** - Reduce style.css file size
 
 ### Text Replacement Engine
-- [x] **Buffer Size Limit** - Reduced from 100 to 50 characters for faster checks
 - [ ] **Keyword Match Optimization** - Use Aho-Corasick algorithm for multi-pattern matching
 
 ---
@@ -56,7 +55,7 @@
 
 ## ⚡ Power User Features
 
-- [x] **Keyboard Shortcuts** - Global hotkey (e.g., `Ctrl+Shift+P`) to open a quick-search popup for prompts without switching windows.
+- [x] **Keyboard Shortcuts** - Global hotkey (e.g., `Ctrl+Alt+P`) to open a quick-search popup for prompts without switching windows.
 - [ ] **Chained Prompts** - Link multiple prompts together (e.g., `:intro` followed by `:signature`).
 - [ ] **Clipboard History Integration** - Optionally append/prepend clipboard content to prompts.
 - [ ] **Markdown Preview** - For longer prompts, show a rendered preview.
@@ -118,4 +117,4 @@
 
 ---
 
-*Last updated: March 5, 2026*
+*Last updated: May 2, 2026*
