@@ -19,11 +19,33 @@ The perform_replacement() function uses pyautogui for:
 This method has been proven to be FAST and RELIABLE.
 Do NOT replace it with keyboard library or any other method.
 """
+import sys
 import time
 import threading
-import keyboard
 import pyautogui
 import pyperclip
+
+if sys.platform == 'darwin':
+    try:
+        # pyobjc 12.x dropped AXIsProcessTrusted from HIServices' lazy-load map,
+        # causing pynput to crash with KeyError on startup. Pre-inject it via
+        # ctypes so Python resolves it from __dict__ without hitting the lazy loader.
+        import ctypes, ctypes.util
+        _lib_path = ctypes.util.find_library('ApplicationServices')
+        if _lib_path:
+            _applib = ctypes.cdll.LoadLibrary(_lib_path)
+            _applib.AXIsProcessTrusted.restype = ctypes.c_bool
+            import HIServices as _HIServices
+            _HIServices.AXIsProcessTrusted = _applib.AXIsProcessTrusted
+    except Exception:
+        pass
+    from pynput import keyboard as _pynput_kb
+    _PASTE_KEY = 'command'
+    _PASTE_RELEASE_KEYS = ['command', 'shift', 'alt', 'v']
+else:
+    import keyboard
+    _PASTE_KEY = 'ctrl'
+    _PASTE_RELEASE_KEYS = ['ctrl', 'shift', 'alt', 'v']
 from PyQt6.QtCore import QThread, QTimer, Qt
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, 
                              QHBoxLayout, QLineEdit, QListWidget, 
@@ -102,7 +124,7 @@ class RealtimeTextReplacer:
     def on_key_event(self, event):
         try:
             # OPTIMIZATION: Early exit checks before acquiring lock
-            if self.is_replacing or event.event_type != keyboard.KEY_DOWN:
+            if self.is_replacing or event.event_type != 'down':
                 return
 
             # FIX: Use lock for thread-safe buffer access
@@ -182,12 +204,12 @@ class RealtimeTextReplacer:
                 
             try:
                 pyperclip.copy(replacement_text)
-                pyautogui.hotkey('ctrl', 'v')
+                pyautogui.hotkey(_PASTE_KEY, 'v')
             except Exception as e:
                 print(f"Error during replacement paste: {e}")
             finally:
                 # Safety releases: prevent PyAutoGUI from leaving modifiers down
-                for key in ['ctrl', 'shift', 'alt', 'v']:
+                for key in _PASTE_RELEASE_KEYS:
                     pyautogui.keyUp(key)
 
                 # Slight delay to ensure Ctrl+V completes before restoring old clipboard
@@ -212,28 +234,62 @@ class RealtimeTextReplacer:
             replacement_text = self.prompts.get(keyword, '')
         self._do_replacement(keyword, replacement_text)
 
-    def start_monitoring(self):
+    def _pynput_on_press(self, key):
+        """Translate a pynput key-press into the same shape on_key_event expects."""
         try:
-            keyboard.hook(self.on_key_event)
-        except Exception as e:
-            print(f"CRITICAL: Failed to hook keyboard. Text replacement will not work. Error: {e}")
-            self._running = False
-            return
+            if key == _pynput_kb.Key.space:
+                name = 'space'
+            elif key == _pynput_kb.Key.backspace:
+                name = 'backspace'
+            elif hasattr(key, 'char') and key.char is not None:
+                name = key.char
+            else:
+                return  # modifier / function keys — ignore
 
-        # OPTIMIZATION: Increased sleep interval from 0.1s to 0.2s for lower CPU usage
-        # File check only happens every 10 cycles (every 2 seconds) to reduce I/O
+            class _Ev:
+                event_type = 'down'
+            ev = _Ev()
+            ev.name = name
+            self.on_key_event(ev)
+        except Exception:
+            pass
+
+    def _run_loop(self):
+        """Shared polling loop used by both platform backends."""
         check_counter = 0
         while self._running:
             time.sleep(0.2)
             check_counter += 1
-            # Only check file modification every 10 iterations (2 seconds)
             if check_counter >= 10:
                 self.reload_prompts_if_needed()
                 check_counter = 0
 
+    def start_monitoring(self):
+        if sys.platform == 'darwin':
+            try:
+                self._pynput_listener = _pynput_kb.Listener(on_press=self._pynput_on_press)
+                self._pynput_listener.start()
+            except Exception as e:
+                print(f"CRITICAL: Failed to start pynput listener. Text replacement will not work. Error: {e}")
+                self._running = False
+                return
+        else:
+            try:
+                keyboard.hook(self.on_key_event)
+            except Exception as e:
+                print(f"CRITICAL: Failed to hook keyboard. Text replacement will not work. Error: {e}")
+                self._running = False
+                return
+
+        self._run_loop()
+
     def stop_monitoring(self):
         self._running = False
-        keyboard.unhook_all()
+        if sys.platform == 'darwin':
+            if hasattr(self, '_pynput_listener'):
+                self._pynput_listener.stop()
+        else:
+            keyboard.unhook_all()
 
 
 class ReplacerThread(QThread):
@@ -499,13 +555,12 @@ class QuickSearchWindow(QMainWindow):
             
         try:
             pyperclip.copy(content)
-            # Paste using Ctrl+V
-            pyautogui.hotkey('ctrl', 'v')
+            pyautogui.hotkey(_PASTE_KEY, 'v')
         except Exception as e:
             print(f"Error during paste: {e}")
         finally:
             # explicitly release keys just in case pyautogui leaves them down
-            for key in ['ctrl', 'shift', 'alt', 'v']:
+            for key in _PASTE_RELEASE_KEYS:
                 pyautogui.keyUp(key)
                 
             # Wait 200ms before restoring original clipboard to ensure paste completed

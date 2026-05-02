@@ -81,8 +81,7 @@ async def read_root(request: Request):
                 'last_updated': get_current_date(),
                 'tags': []
             }
-    return templates.TemplateResponse("index.html", {
-        "request": request,
+    return templates.TemplateResponse(request, "index.html", {
         "prompts": processed_prompts,
         "count_tokens": count_tokens,
         "theme": settings.get("theme", "dark"),
