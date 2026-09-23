@@ -5,6 +5,7 @@ All notable changes to PromptPlus will be documented in this file.
 ## [Unreleased] - 2026-09-23
 
 ### Changed
+- Windows builds now clear PyInstaller's cache and leave native DLLs uncompressed to reduce packaging-related startup failures.
 - Prompt saves and imports now replace the JSON file atomically, so the text replacer does not read a partially written file.
 - Quick Search uses `Ctrl+Alt+P` in both launchers. The shortcut no longer suppresses physical key events and triggers when the final shortcut key is released.
 - Keyboard callbacks open Quick Search on the Qt UI thread. Shutdown removes only PromptPlus's own keyboard registrations.
