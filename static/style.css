@@ -241,6 +241,64 @@ kbd {
     display: inline;
 }
 
+/* Language Toggle */
+.lang-toggle {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-primary);
+    min-width: 58px;
+    height: 36px;
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.15s ease;
+    padding: 0 0.5rem;
+}
+
+.lang-toggle:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.lang-toggle i {
+    font-size: 0.95rem;
+}
+
+.lang-toggle .lang-code {
+    font-size: 0.75rem;
+    line-height: 1;
+    font-weight: 700;
+}
+
+.lang-choice-btn {
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    padding: 0.45rem 0.9rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border-radius: var(--radius);
+    transition: all 0.15s ease;
+}
+
+.lang-choice-btn:hover {
+    background-color: var(--bg-secondary);
+    border-color: var(--border-color);
+    color: var(--text-primary);
+}
+
+.lang-choice-btn.active {
+    background-color: var(--accent-primary);
+    border-color: var(--accent-primary);
+    color: #ffffff;
+}
+
 /* Nav Action Buttons (Export, Import) - Neutral style like theme toggle */
 .btn-nav-action {
     background: transparent;

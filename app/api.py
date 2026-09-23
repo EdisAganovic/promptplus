@@ -6,23 +6,37 @@ Routes:
 - POST /add               -> Add new prompt (keyword, content)
 - POST /update/{keyword}  -> Update existing prompt
 - GET  /delete/{keyword}  -> Delete prompt
+- POST /update_theme      -> Update UI theme
+- POST /update_language   -> Update UI language
+- POST /update_settings   -> Update Windows autostart & settings
 """
 import os
-from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-import shutil
+import sys
 import json
 import traceback
 import logging
 import hashlib
+from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from .utils import load_prompts, save_prompts, get_prompts_file, DEMO_FILE, get_current_date, count_tokens, load_settings, save_settings, VERSION
+from .utils import (
+    load_prompts,
+    save_prompts,
+    get_prompts_file,
+    DEMO_FILE,
+    get_current_date,
+    count_tokens,
+    load_settings,
+    save_settings,
+    set_start_on_boot,
+    VERSION,
+)
 
 app = FastAPI()
 
@@ -57,21 +71,18 @@ async def quick_search_prompts(request: Request):
     return [{"keyword": key, "content": data["content"]}
             for key, data in prompts.items() if isinstance(data.get("content"), str)]
 
+
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     logger.error(f"Global error handler caught: {exc}")
     logger.error(traceback.format_exc())
     return HTMLResponse(content=f"Internal Server Error: {str(exc)}", status_code=500)
 
-# Static files
-import sys
 
 # Determine base path for resources
 if getattr(sys, 'frozen', False):
-    # Running in a PyInstaller bundle
     base_dir = sys._MEIPASS if hasattr(sys, '_MEIPASS') else os.path.dirname(sys.executable)
 else:
-    # Running in a normal Python environment
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Static files
@@ -117,6 +128,7 @@ async def read_root(request: Request):
         "prompts": processed_prompts,
         "count_tokens": count_tokens,
         "theme": settings.get("theme", "dark"),
+        "language": settings.get("language", "bs"),
         "start_with_windows": settings.get("start_with_windows", False),
         "demo_mode": get_prompts_file() == DEMO_FILE,
         "all_tags": sorted(list(set(tag for p in processed_prompts.values() for tag in p.get('tags', [])))),
@@ -153,7 +165,7 @@ async def update_prompt(old_keyword: str, keyword: str = Form(...), content: str
         else:
             new_keyword = keyword
 
-        # FIX: Check for keyword collision - don't overwrite existing prompts
+        # Check for keyword collision - don't overwrite existing prompts
         if new_keyword in prompts and new_keyword != old_keyword:
             logger.warning(f"Cannot rename '{old_keyword}' to '{new_keyword}': target already exists")
             return HTMLResponse(
@@ -208,7 +220,6 @@ async def import_prompts(file: UploadFile = File(...)):
             if isinstance(value, dict) and not isinstance(value.get('content'), str):
                 return HTMLResponse(content="Invalid prompt content.", status_code=400)
         
-        # Reuse the locked atomic writer used by normal prompt edits.
         save_prompts(imported)
     except Exception as e:
         logger.error(f"Error importing prompts: {e}")
@@ -225,6 +236,7 @@ async def delete_prompt(keyword: str):
         save_prompts(prompts)
     return RedirectResponse("/", status_code=303)
 
+
 @app.post("/update_theme")
 async def update_theme(theme: str = Form(...)):
     settings = load_settings()
@@ -233,15 +245,25 @@ async def update_theme(theme: str = Form(...)):
     return {"status": "success", "theme": theme}
 
 
+@app.post("/update_language")
+async def update_language(language: str = Form(...)):
+    if language not in ("bs", "en"):
+        raise HTTPException(status_code=400, detail="Unsupported language")
+    settings = load_settings()
+    settings["language"] = language
+    save_settings(settings)
+    return {"status": "success", "language": language}
+
+
 @app.get("/open_url")
 async def open_url(url: str):
     import webbrowser
     webbrowser.open(url)
     return {"status": "success"}
 
+
 @app.post("/update_settings")
 async def update_settings(start_with_windows: bool = Form(...)):
-    from .utils import save_settings, set_start_on_boot
     settings = load_settings()
     settings["start_with_windows"] = start_with_windows
     save_settings(settings)

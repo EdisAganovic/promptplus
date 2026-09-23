@@ -126,7 +126,7 @@ def load_settings():
         except Exception as e:
             print(f"Error loading settings: {e}")
             # If corrupted, we return defaults rather than crashing
-    return {"theme": "dark", "start_with_windows": False} # Default settings
+    return {"theme": "dark", "start_with_windows": False, "language": "bs"} # Default settings
 
 
 def save_settings(settings):

@@ -1,13 +1,19 @@
 <!DOCTYPE html>
 <html lang="bs">
 <script>
-    // Load theme from server-side variable or local storage
+    // Load theme & language from server-side variable or local storage
     (function () {
         const serverTheme = "{{ theme }}";
         const localTheme = localStorage.getItem('promptplus-theme');
         const theme = serverTheme || localTheme || 'dark';
         document.documentElement.setAttribute('data-theme', theme);
         localStorage.setItem('promptplus-theme', theme);
+
+        const serverLang = "{{ language }}";
+        const localLang = localStorage.getItem('promptplus-lang');
+        const lang = localLang || serverLang || 'bs';
+        document.documentElement.setAttribute('lang', lang);
+        localStorage.setItem('promptplus-lang', lang);
     })();
 </script>
 
@@ -18,14 +24,14 @@
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/style.css?v={{ version }}-6">
+    <link rel="stylesheet" href="/static/style.css?v={{ version }}-7">
 </head>
 
 <body class="d-flex flex-column min-vh-100">
     <div class="loading-overlay" id="loadingOverlay">
         <div class="text-center">
             <div class="spinner-border text-primary mb-3" role="status"></div>
-            <div class="h5 fw-bold">PromptPlus Loading...</div>
+            <div class="h5 fw-bold" data-i18n="loading">PromptPlus se učitava...</div>
         </div>
     </div>
 
@@ -37,21 +43,24 @@
             </a>
             <div class="d-flex align-items-center gap-2">
                 <button class="btn btn-nav-action" type="button" data-bs-toggle="modal" data-bs-target="#aboutModal"
-                    title="About PromptPlus">
-                    <i class="fas fa-info-circle me-1"></i> About
+                    data-i18n-title="nav.aboutTitle" title="O aplikaciji PromptPlus">
+                    <i class="fas fa-info-circle me-1"></i> <span data-i18n="nav.about">O aplikaciji</span>
                 </button>
-                <a href="/export" class="btn btn-nav-action" title="Export as JSON">
-                    <i class="fas fa-file-export me-1"></i> Export
+                <a href="/export" class="btn btn-nav-action" data-i18n-title="nav.exportTitle" title="Izvezi kao JSON">
+                    <i class="fas fa-file-export me-1"></i> <span data-i18n="nav.export">Izvezi</span>
                 </a>
                 <button class="btn btn-nav-action" type="button" data-bs-toggle="modal" data-bs-target="#importModal"
-                    title="Import from JSON">
-                    <i class="fas fa-file-import me-1"></i> Import
+                    data-i18n-title="nav.importTitle" title="Uvezi iz JSON-a">
+                    <i class="fas fa-file-import me-1"></i> <span data-i18n="nav.import">Uvezi</span>
                 </button>
                 <button class="btn btn-nav-action" type="button" data-bs-toggle="modal" data-bs-target="#settingsModal"
-                    title="Settings">
+                    data-i18n-title="nav.settings" title="Postavke">
                     <i class="fas fa-cog"></i>
                 </button>
-                <button class="theme-toggle" id="themeToggle" title="Toggle theme">
+                <button class="lang-toggle" id="langToggle" data-i18n-title="nav.toggleLang" title="Promijeni jezik (BS / EN)" aria-label="Toggle language">
+                    <i class="fas fa-globe me-1"></i><span id="langLabel" class="lang-code">BS</span>
+                </button>
+                <button class="theme-toggle" id="themeToggle" data-i18n-title="nav.toggleTheme" title="Promijeni temu">
                     <i class="fas fa-moon"></i>
                     <i class="fas fa-sun"></i>
                 </button>
@@ -61,8 +70,8 @@
 
     <div class="container flex-grow-1 py-4">
         {% if demo_mode %}
-        <div class="alert alert-info demo-banner" role="status">
-            Demo mode: showing prompts from demo.json. Your personal prompts.json is unchanged.
+        <div class="alert alert-info demo-banner" role="status" data-i18n="demo.banner">
+            Demo mod: prikazuju se promptovi iz demo.json. Vaš lični prompts.json je nepromijenjen.
         </div>
         {% endif %}
         <div class="row">
@@ -75,7 +84,7 @@
                                 <div class="search-input-wrapper flex-grow-1">
                                     <i class="fas fa-search search-icon"></i>
                                     <input type="text" id="searchInput" class="search-input w-100"
-                                        placeholder="Pretraži promptove">
+                                        placeholder="Pretraži promptove..." data-i18n-placeholder="search.placeholder">
                                     <div class="shortcut-hint d-none d-md-flex align-items-center gap-1 me-2">
                                         <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd>
                                     </div>
@@ -86,14 +95,14 @@
                                 <button class="btn btn-accent d-flex align-items-center justify-content-center" 
                                     type="button" data-bs-toggle="modal" data-bs-target="#addPromptModal" 
                                     style="height: 48px; min-width: 120px; font-weight: 600; font-size: 15px;">
-                                    <i class="fas fa-plus me-2"></i> Dodaj
+                                    <i class="fas fa-plus me-2"></i> <span data-i18n="search.addBtn">Dodaj</span>
                                 </button>
                             </div>
                             <div id="tagFilters" class="d-flex flex-wrap align-items-center">
                                 <span class="text-muted small me-2"><i class="fas fa-filter me-1"></i>
-                                    Filteri:</span>
+                                    <span data-i18n="filters.label">Filteri:</span></span>
                                 <span class="tag-chip badge bg-tertiary text-secondary p-2 px-3 active"
-                                    data-tag="all">Sve</span>
+                                    data-tag="all" data-i18n="filters.all">Sve</span>
                                 {% for tag in all_tags %}
                                 <span class="tag-chip category-chip badge p-2 px-3" style="--category-color: {{ category_color(tag) }}" data-tag="{{ tag }}">{{
                                     tag }}</span>
@@ -116,11 +125,14 @@
                                             data-keyword="{{ keyword }}"
                                             data-content="{{ prompt_data.content }}"
                                             data-tags="{{ prompt_data.tags|join(', ') }}"
+                                            data-i18n-title="prompt.editTitle"
                                             title="Uredi prompt">
                                             <i class="fas fa-edit"></i>
                                         </button>
                                         <button type="button" class="btn btn-sm btn-outline-danger btn-delete-confirm"
-                                            data-keyword="{{ keyword }}" data-url="/delete/{{ keyword }}">
+                                            data-keyword="{{ keyword }}" data-url="/delete/{{ keyword }}"
+                                            data-i18n-title="prompt.deleteTitle"
+                                            title="Obriši prompt">
                                             <i class="fas fa-trash"></i>
                                         </button>
                                     </div>
@@ -145,11 +157,11 @@
                         <div class="mb-4">
                             <i class="fas fa-inbox fa-5x text-muted" style="opacity: 0.3;"></i>
                         </div>
-                        <h4 class="mb-3">Nema dodanih promptova</h4>
-                        <p class="text-muted mb-4">Dodajte svoj prvi prompt da biste počeli koristiti PromptPlus</p>
+                        <h4 class="mb-3" data-i18n="empty.title">Nema dodanih promptova</h4>
+                        <p class="text-muted mb-4" data-i18n="empty.subtitle">Dodajte svoj prvi prompt da biste počeli koristiti PromptPlus</p>
                         <button class="btn btn-accent btn-lg px-4 py-2" data-bs-toggle="modal"
                             data-bs-target="#addPromptModal">
-                            <i class="fas fa-plus me-2"></i> Dodaj
+                            <i class="fas fa-plus me-2"></i> <span data-i18n="empty.addBtn">Dodaj</span>
                         </button>
                     </div>
                     {% endif %}
@@ -162,24 +174,24 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Importuj promptove</h5>
+                    <h5 class="modal-title" data-i18n="importModal.title">Uvezi promptove</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form method="post" action="/import" enctype="multipart/form-data">
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label for="importFile" class="form-label">JSON fajl</label>
+                            <label for="importFile" class="form-label" data-i18n="importModal.fileLabel">JSON fajl</label>
                             <input type="file" id="importFile" name="file" class="form-control" accept=".json" required>
                             <div class="form-text text-danger mt-2">
                                 <i class="fas fa-exclamation-triangle me-1"></i>
-                                Pažnja: Ovo će <strong>zamijeniti</strong> sve vaše trenutne promptove.
+                                <span data-i18n="importModal.warning">Pažnja: Ovo će <strong>zamijeniti</strong> sve vaše trenutne promptove.</span>
                             </div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-light btn-cancel"
-                            data-bs-dismiss="modal">Odustani</button>
-                        <button type="submit" class="btn btn-accent">Importuj</button>
+                            data-bs-dismiss="modal" data-i18n="modal.cancel">Odustani</button>
+                        <button type="submit" class="btn btn-accent" data-i18n="importModal.submit">Uvezi</button>
                     </div>
                 </form>
             </div>
@@ -191,33 +203,33 @@
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Dodaj novi prompt</h5>
+                    <h5 class="modal-title" data-i18n="addModal.title">Dodaj novi prompt</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form method="post" action="/add">
                     <div class="modal-body">
                         <div class="mb-4">
-                            <label for="keyword" class="form-label">Ključna riječ</label>
+                            <label for="keyword" class="form-label" data-i18n="modal.keywordLabel">Ključna riječ</label>
                             <input type="text" class="form-control form-control-lg" id="keyword" name="keyword"
-                                placeholder="imeprompta" required>
-                            <div class="form-text text-muted">Znak : se automatski dodaje.</div>
+                                placeholder="imeprompta" data-i18n-placeholder="modal.keywordPlaceholder" required>
+                            <div class="form-text text-muted" data-i18n="modal.keywordHelp">Znak : se automatski dodaje.</div>
                         </div>
                         <div class="mb-4">
-                            <label for="content" class="form-label">Sadržaj prompta</label>
+                            <label for="content" class="form-label" data-i18n="modal.contentLabel">Sadržaj prompta</label>
                             <textarea class="form-control" id="content" name="content" rows="6"
-                                placeholder="Unesite sadržaj prompta..." required></textarea>
+                                placeholder="Unesite sadržaj prompta..." data-i18n-placeholder="modal.contentPlaceholder" required></textarea>
                         </div>
                         <div class="mb-0">
-                            <label for="tags" class="form-label">Tagovi</label>
+                            <label for="tags" class="form-label" data-i18n="modal.tagsLabel">Tagovi</label>
                             <input type="text" class="form-control" id="tags" name="tags"
-                                placeholder="npr. posao, privatno, kod">
-                            <div class="form-text text-muted">Odvojite tagove zarezima.</div>
+                                placeholder="npr. posao, privatno, kod" data-i18n-placeholder="modal.tagsPlaceholder">
+                            <div class="form-text text-muted" data-i18n="modal.tagsHelp">Odvojite tagove zarezima.</div>
                         </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-outline-light btn-cancel"
-                            data-bs-dismiss="modal">Odustani</button>
-                        <button type="submit" class="btn btn-accent">Dodaj prompt</button>
+                            data-bs-dismiss="modal" data-i18n="modal.cancel">Odustani</button>
+                        <button type="submit" class="btn btn-accent" data-i18n="addModal.submit">Dodaj prompt</button>
                     </div>
                 </form>
             </div>
@@ -229,29 +241,29 @@
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title">Uredi prompt</h5>
+                    <h5 class="modal-title" data-i18n="editModal.title">Uredi prompt</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form method="post" id="editPromptForm">
                     <div class="modal-body">
                         <div class="mb-4">
-                            <label for="editKeyword" class="form-label">Ključna riječ</label>
+                            <label for="editKeyword" class="form-label" data-i18n="modal.keywordLabel">Ključna riječ</label>
                             <input type="text" class="form-control form-control-lg" id="editKeyword" name="keyword" required>
-                            <div class="form-text text-muted">Znak : se automatski dodaje.</div>
+                            <div class="form-text text-muted" data-i18n="modal.keywordHelp">Znak : se automatski dodaje.</div>
                         </div>
                         <div class="mb-4">
-                            <label for="editContent" class="form-label">Sadržaj prompta</label>
+                            <label for="editContent" class="form-label" data-i18n="modal.contentLabel">Sadržaj prompta</label>
                             <textarea class="form-control" id="editContent" name="content" rows="6" required></textarea>
                         </div>
                         <div class="mb-0">
-                            <label for="editTags" class="form-label">Tagovi</label>
-                            <input type="text" class="form-control" id="editTags" name="tags" placeholder="posao, privatno, kod...">
-                            <div class="form-text text-muted">Odvojite tagove zarezima.</div>
+                            <label for="editTags" class="form-label" data-i18n="modal.tagsLabel">Tagovi</label>
+                            <input type="text" class="form-control" id="editTags" name="tags" placeholder="posao, privatno, kod..." data-i18n-placeholder="editModal.tagsPlaceholder">
+                            <div class="form-text text-muted" data-i18n="modal.tagsHelp">Odvojite tagove zarezima.</div>
                         </div>
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-outline-light btn-cancel" data-bs-dismiss="modal">Odustani</button>
-                        <button type="submit" class="btn btn-accent">Sačuvaj izmjene</button>
+                        <button type="button" class="btn btn-outline-light btn-cancel" data-bs-dismiss="modal" data-i18n="modal.cancel">Odustani</button>
+                        <button type="submit" class="btn btn-accent" data-i18n="editModal.submit">Sačuvaj izmjene</button>
                     </div>
                 </form>
             </div>
@@ -263,29 +275,43 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold">Postavke</h5>
+                    <h5 class="modal-title fw-bold" data-i18n="settings.title">Postavke</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body py-4">
+                    <!-- Language Setting -->
+                    <div class="mb-4">
+                        <label class="form-label fw-bold mb-2" data-i18n="settings.language">Jezik / Language</label>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="lang-choice-btn flex-fill d-flex align-items-center justify-content-center gap-2" data-lang="bs">
+                                <i class="fas fa-globe"></i> Bosanski (BS)
+                            </button>
+                            <button type="button" class="lang-choice-btn flex-fill d-flex align-items-center justify-content-center gap-2" data-lang="en">
+                                <i class="fas fa-globe"></i> English (EN)
+                            </button>
+                        </div>
+                        <div class="form-text mt-1" data-i18n="settings.languageHelp">Odaberite jezik interfejsa.</div>
+                    </div>
+
                     <div class="form-check form-switch mb-4">
                         <input class="form-check-input" type="checkbox" id="startWithWindowsCheck" {% if
                             start_with_windows %}checked{% endif %}>
-                        <label class="form-check-label" for="startWithWindowsCheck">Pokreni sa Windows-om</label>
-                        <div class="form-text">Aplikacija će se automatski pokrenuti minimizirana pri prijavi na
+                        <label class="form-check-label" for="startWithWindowsCheck" data-i18n="settings.startWithWindows">Pokreni sa Windows-om</label>
+                        <div class="form-text" data-i18n="settings.startWithWindowsHelp">Aplikacija će se automatski pokrenuti minimizirana pri prijavi na
                             Windows.</div>
                     </div>
                     
                     <div class="border-top pt-3 mt-3">
-                        <h6 class="fw-bold mb-2">Globalne prečice</h6>
+                        <h6 class="fw-bold mb-2" data-i18n="settings.shortcutsTitle">Globalne prečice</h6>
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="small text-muted">Quick Search:</span>
+                            <span class="small text-muted" data-i18n="settings.quickSearch">Quick Search:</span>
                             <span><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>P</kbd></span>
                         </div>
-                        <div class="form-text mt-1">Ova prečica radi iz bilo koje aplikacije dok je PromptPlus pokrenut.</div>
+                        <div class="form-text mt-1" data-i18n="settings.shortcutsHelp">Ova prečica radi iz bilo koje aplikacije dok je PromptPlus pokrenut.</div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-nav-action w-100" data-bs-dismiss="modal">Zatvori</button>
+                    <button type="button" class="btn btn-nav-action w-100" data-bs-dismiss="modal" data-i18n="settings.close">Zatvori</button>
                 </div>
             </div>
         </div>
@@ -296,17 +322,19 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold">Potvrda brisanja</h5>
+                    <h5 class="modal-title fw-bold" data-i18n="deleteModal.title">Potvrda brisanja</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body py-4">
-                    <p class="mb-0">Da li ste sigurni da želite obrisati prompt <span id="deletePromptKeyword"
-                            class="fw-bold text-danger"></span>? Ova radnja se ne
-                        može poništiti.</p>
+                    <p class="mb-0">
+                        <span id="deleteConfirmPrefix">Da li ste sigurni da želite obrisati prompt</span>
+                        <span id="deletePromptKeyword" class="fw-bold text-danger"></span>
+                        <span id="deleteConfirmSuffix">? Ova radnja se ne može poništiti.</span>
+                    </p>
                 </div>
                 <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Odustani</button>
-                    <a id="confirmDeleteBtn" href="#" class="btn btn-danger px-4">Obriši</a>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" data-i18n="modal.cancel">Odustani</button>
+                    <a id="confirmDeleteBtn" href="#" class="btn btn-danger px-4" data-i18n="deleteModal.confirmBtn">Obriši</a>
                 </div>
             </div>
         </div>
@@ -317,7 +345,7 @@
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content border-0 shadow-lg">
                 <div class="modal-header border-0 pb-0">
-                    <h5 class="modal-title fw-bold">About</h5>
+                    <h5 class="modal-title fw-bold" data-i18n="aboutModal.title">O aplikaciji</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body text-center py-4">
@@ -328,7 +356,7 @@
                     </div>
                     <hr class="my-4">
                     <div class="mb-4">
-                        <p class="small text-muted mb-2">Veliko hvala polaznicima grupe:</p>
+                        <p class="small text-muted mb-2" data-i18n="aboutModal.thanks">Veliko hvala polaznicima grupe:</p>
                         <p class="mb-1 fw-semibold">AI grupa PixelPro 2025 Septembar</p>
                         <p class="mb-0 fw-semibold">AI grupa KCKF 2025 Novembar</p>
                     </div>
@@ -338,7 +366,7 @@
                     </a>
                 </div>
                 <div class="modal-footer border-0 pt-0">
-                    <button type="button" class="btn btn-nav-action w-100" data-bs-dismiss="modal">Zatvori</button>
+                    <button type="button" class="btn btn-nav-action w-100" data-bs-dismiss="modal" data-i18n="aboutModal.close">Zatvori</button>
                 </div>
             </div>
         </div>
@@ -350,7 +378,7 @@
         <div id="toastNotification" class="toast show" role="alert" aria-live="assertive" aria-atomic="true">
             <div class="toast-header">
                 <strong class="me-auto">PromptPlus</strong>
-                <small>Sada</small>
+                <small data-i18n="toast.now">Sada</small>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"
                     aria-label="Close"></button>
             </div>
@@ -363,6 +391,216 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // ===========================================
+        // i18n Translations Dictionary
+        // ===========================================
+        const translations = {
+            bs: {
+                loading: "PromptPlus se učitava...",
+                "nav.about": "O aplikaciji",
+                "nav.aboutTitle": "O aplikaciji PromptPlus",
+                "nav.export": "Izvezi",
+                "nav.exportTitle": "Izvezi kao JSON",
+                "nav.import": "Uvezi",
+                "nav.importTitle": "Uvezi iz JSON-a",
+                "nav.settings": "Postavke",
+                "nav.toggleLang": "Promijeni jezik (BS / EN)",
+                "nav.toggleTheme": "Promijeni temu",
+                "search.placeholder": "Pretraži promptove...",
+                "search.addBtn": "Dodaj",
+                "filters.label": "Filteri:",
+                "filters.all": "Sve",
+                "prompt.editTitle": "Uredi prompt",
+                "prompt.deleteTitle": "Obriši prompt",
+                "empty.title": "Nema dodanih promptova",
+                "empty.subtitle": "Dodajte svoj prvi prompt da biste počeli koristiti PromptPlus",
+                "empty.addBtn": "Dodaj",
+                "demo.banner": "Demo mod: prikazuju se promptovi iz demo.json. Vaš lični prompts.json je nepromijenjen.",
+                "importModal.title": "Uvezi promptove",
+                "importModal.fileLabel": "JSON fajl",
+                "importModal.warning": "Pažnja: Ovo će <strong>zamijeniti</strong> sve vaše trenutne promptove.",
+                "importModal.submit": "Uvezi",
+                "modal.cancel": "Odustani",
+                "addModal.title": "Dodaj novi prompt",
+                "modal.keywordLabel": "Ključna riječ",
+                "modal.keywordPlaceholder": "imeprompta",
+                "modal.keywordHelp": "Znak : se automatski dodaje.",
+                "modal.contentLabel": "Sadržaj prompta",
+                "modal.contentPlaceholder": "Unesite sadržaj prompta...",
+                "modal.tagsLabel": "Tagovi",
+                "modal.tagsPlaceholder": "npr. posao, privatno, kod",
+                "modal.tagsHelp": "Odvojite tagove zarezima.",
+                "addModal.submit": "Dodaj prompt",
+                "editModal.title": "Uredi prompt",
+                "editModal.tagsPlaceholder": "posao, privatno, kod...",
+                "editModal.submit": "Sačuvaj izmjene",
+                "settings.title": "Postavke",
+                "settings.language": "Jezik / Language",
+                "settings.languageHelp": "Odaberite jezik interfejsa.",
+                "settings.startWithWindows": "Pokreni sa Windows-om",
+                "settings.startWithWindowsHelp": "Aplikacija će se automatski pokrenuti minimizirana pri prijavi na Windows.",
+                "settings.shortcutsTitle": "Globalne prečice",
+                "settings.quickSearch": "Quick Search:",
+                "settings.shortcutsHelp": "Ova prečica radi iz bilo koje aplikacije dok je PromptPlus pokrenut.",
+                "settings.close": "Zatvori",
+                "deleteModal.title": "Potvrda brisanja",
+                "deleteModal.prefix": "Da li ste sigurni da želite obrisati prompt ",
+                "deleteModal.suffix": "? Ova radnja se ne može poništiti.",
+                "deleteModal.confirmBtn": "Obriši",
+                "aboutModal.title": "O aplikaciji",
+                "aboutModal.thanks": "Veliko hvala polaznicima grupe:",
+                "aboutModal.close": "Zatvori",
+                "toast.now": "Sada"
+            },
+            en: {
+                loading: "PromptPlus Loading...",
+                "nav.about": "About",
+                "nav.aboutTitle": "About PromptPlus",
+                "nav.export": "Export",
+                "nav.exportTitle": "Export as JSON",
+                "nav.import": "Import",
+                "nav.importTitle": "Import from JSON",
+                "nav.settings": "Settings",
+                "nav.toggleLang": "Switch language (BS / EN)",
+                "nav.toggleTheme": "Toggle theme",
+                "search.placeholder": "Search prompts...",
+                "search.addBtn": "Add",
+                "filters.label": "Filters:",
+                "filters.all": "All",
+                "prompt.editTitle": "Edit prompt",
+                "prompt.deleteTitle": "Delete prompt",
+                "empty.title": "No prompts added yet",
+                "empty.subtitle": "Add your first prompt to get started with PromptPlus",
+                "empty.addBtn": "Add",
+                "demo.banner": "Demo mode: showing prompts from demo.json. Your personal prompts.json is unchanged.",
+                "importModal.title": "Import Prompts",
+                "importModal.fileLabel": "JSON File",
+                "importModal.warning": "Warning: This will <strong>replace</strong> all your current prompts.",
+                "importModal.submit": "Import",
+                "modal.cancel": "Cancel",
+                "addModal.title": "Add New Prompt",
+                "modal.keywordLabel": "Keyword",
+                "modal.keywordPlaceholder": "promptname",
+                "modal.keywordHelp": "The : prefix is added automatically.",
+                "modal.contentLabel": "Prompt Content",
+                "modal.contentPlaceholder": "Enter prompt content...",
+                "modal.tagsLabel": "Tags",
+                "modal.tagsPlaceholder": "e.g. work, personal, code",
+                "modal.tagsHelp": "Separate tags with commas.",
+                "addModal.submit": "Add Prompt",
+                "editModal.title": "Edit Prompt",
+                "editModal.tagsPlaceholder": "work, personal, code...",
+                "editModal.submit": "Save Changes",
+                "settings.title": "Settings",
+                "settings.language": "Language / Jezik",
+                "settings.languageHelp": "Select interface language.",
+                "settings.startWithWindows": "Start with Windows",
+                "settings.startWithWindowsHelp": "The application will start minimized automatically when you log into Windows.",
+                "settings.shortcutsTitle": "Global Shortcuts",
+                "settings.quickSearch": "Quick Search:",
+                "settings.shortcutsHelp": "This shortcut works from any application while PromptPlus is running.",
+                "settings.close": "Close",
+                "deleteModal.title": "Confirm Deletion",
+                "deleteModal.prefix": "Are you sure you want to delete prompt ",
+                "deleteModal.suffix": "? This action cannot be undone.",
+                "deleteModal.confirmBtn": "Delete",
+                "aboutModal.title": "About",
+                "aboutModal.thanks": "Special thanks to the group participants:",
+                "aboutModal.close": "Close",
+                "toast.now": "Just now"
+            }
+        };
+
+        function setLanguage(lang, persist = true) {
+            if (!translations[lang]) lang = 'bs';
+            const dict = translations[lang];
+
+            // Update html lang attribute & storage
+            document.documentElement.setAttribute('lang', lang);
+            localStorage.setItem('promptplus-lang', lang);
+
+            // Update navbar toggle label
+            const langLabel = document.getElementById('langLabel');
+            if (langLabel) {
+                langLabel.textContent = lang.toUpperCase();
+            }
+
+            // Update all text nodes with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (dict[key]) {
+                    el.innerHTML = dict[key];
+                }
+            });
+
+            // Update all placeholders with data-i18n-placeholder
+            document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+                const key = el.getAttribute('data-i18n-placeholder');
+                if (dict[key]) {
+                    el.placeholder = dict[key];
+                }
+            });
+
+            // Update all titles with data-i18n-title
+            document.querySelectorAll('[data-i18n-title]').forEach(el => {
+                const key = el.getAttribute('data-i18n-title');
+                if (dict[key]) {
+                    el.title = dict[key];
+                }
+            });
+
+            // Update delete modal text prefix/suffix
+            const deletePrefix = document.getElementById('deleteConfirmPrefix');
+            const deleteSuffix = document.getElementById('deleteConfirmSuffix');
+            if (deletePrefix && dict['deleteModal.prefix']) {
+                deletePrefix.textContent = dict['deleteModal.prefix'];
+            }
+            if (deleteSuffix && dict['deleteModal.suffix']) {
+                deleteSuffix.textContent = dict['deleteModal.suffix'];
+            }
+
+            // Update settings buttons active state
+            document.querySelectorAll('.lang-choice-btn').forEach(btn => {
+                if (btn.getAttribute('data-lang') === lang) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+
+            // Sync with backend only after an explicit change.
+            if (!persist) return;
+            const formData = new FormData();
+            formData.append('language', lang);
+            fetch('/update_language', {
+                method: 'POST',
+                body: formData
+            }).then(response => response.json())
+                .catch(err => console.error('Error saving language:', err));
+        }
+
+        // Initialize language
+        const currentLang = localStorage.getItem('promptplus-lang') || document.documentElement.getAttribute('lang') || 'bs';
+        setLanguage(currentLang, false);
+
+        // Language toggle button in navbar
+        const langToggle = document.getElementById('langToggle');
+        if (langToggle) {
+            langToggle.addEventListener('click', function () {
+                const activeLang = localStorage.getItem('promptplus-lang') || 'bs';
+                const nextLang = activeLang === 'bs' ? 'en' : 'bs';
+                setLanguage(nextLang);
+            });
+        }
+
+        // Language buttons in Settings modal
+        document.querySelectorAll('.lang-choice-btn').forEach(btn => {
+            btn.addEventListener('click', function () {
+                const chosenLang = this.getAttribute('data-lang');
+                setLanguage(chosenLang);
+            });
+        });
+
         // Auto-hide toast after 4 seconds if it exists
         document.addEventListener('DOMContentLoaded', function () {
             const toastEl = document.getElementById('toastNotification');
@@ -377,7 +615,8 @@
         // Search and Tag filtering functionality
         function filterPrompts() {
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const activeTag = document.querySelector('.tag-chip.active').getAttribute('data-tag');
+            const activeTagEl = document.querySelector('.tag-chip.active');
+            const activeTag = activeTagEl ? activeTagEl.getAttribute('data-tag') : 'all';
             const promptItems = document.querySelectorAll('.prompt-item');
 
             promptItems.forEach(item => {
@@ -430,8 +669,6 @@
             document.getElementById('searchInput').focus();
         });
 
-
-
         // Delete Confirmation Logic
         const deleteModal = new bootstrap.Modal(document.getElementById('deleteConfirmModal'));
         const confirmDeleteBtn = document.getElementById('confirmDeleteBtn');
@@ -458,7 +695,6 @@
         // Edit Prompt Modal Logic (Single Dynamic Modal)
         const editModal = new bootstrap.Modal(document.getElementById('editPromptModal'));
         const editForm = document.getElementById('editPromptForm');
-        const editOldKeywordInput = document.getElementById('editOldKeyword');
         const editKeywordInput = document.getElementById('editKeyword');
         const editContentInput = document.getElementById('editContent');
         const editTagsInput = document.getElementById('editTags');
@@ -484,7 +720,6 @@
         // Close modal when form is submitted and redirect
         document.querySelectorAll('form[method="post"]').forEach(form => {
             form.addEventListener('submit', function () {
-                // Close any open modals after a short delay
                 setTimeout(() => {
                     document.querySelectorAll('.modal').forEach(modal => {
                         const bsModal = bootstrap.Modal.getInstance(modal);
@@ -530,14 +765,9 @@
             }).then(response => response.json())
                 .then(data => {
                     console.log('Settings updated:', data);
-                    // Show toast if success
-                    if (data.status === 'success') {
-                        // Option to show a toast here if needed
-                    }
                 })
                 .catch(err => console.error('Error updating settings:', err));
         });
-
     </script>
 </body>
 
