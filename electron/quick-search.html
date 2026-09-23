@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'">
+  <title>Quick Search</title>
+  <link rel="stylesheet" href="quick-search.css">
+</head>
+<body>
+  <header><strong>Quick Search</strong><button id="close" aria-label="Close">×</button></header>
+  <input id="query" type="search" placeholder="Search prompts…" autocomplete="off" autofocus>
+  <div id="results" role="listbox"></div>
+  <script src="quick-search.js"></script>
+</body>
+</html>

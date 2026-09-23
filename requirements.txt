@@ -25,7 +25,3 @@ typing-extensions
 
 # For environment variable management
 python-dotenv
-
-# For Qt interface
-PyQt6
-PyQt6-WebEngine

@@ -41,6 +41,8 @@ if getattr(sys, 'frozen', False):
     
     # On first run, copy prompts.json from install dir to AppData if it doesn't exist
     install_prompts = os.path.join(app_dir, "prompts.json")
+    if not os.path.exists(install_prompts):
+        install_prompts = os.path.join(getattr(sys, '_MEIPASS', app_dir), "prompts.json")
     user_prompts = os.path.join(data_dir, "prompts.json")
     if os.path.exists(install_prompts) and not os.path.exists(user_prompts):
         import shutil
@@ -180,14 +182,12 @@ def set_start_on_boot(enabled: bool):
     key_path = r"Software\Microsoft\Windows\CurrentVersion\Run"
     app_name = "PromptPlus"
     
-    # Use sys.executable for the compiled exe, or the full python command for dev
-    if getattr(sys, 'frozen', False):
-        app_path = f'"{sys.executable}" --minimize'
-    else:
-        # For development, we point to the main.py or ui.py
-        # But realistically this is for the frozen app
-        main_script = os.path.abspath(sys.modules['__main__'].__file__) if '__main__' in sys.modules and hasattr(sys.modules['__main__'], '__file__') else os.path.join(app_dir, "main.py")
-        app_path = f'"{sys.executable}" "{main_script}" --minimize'
+    desktop_exe = os.environ.get("PROMPTPLUS_DESKTOP_EXE")
+    if not desktop_exe:
+        return False
+    project_dir = os.environ.get("PROMPTPLUS_DESKTOP_PROJECT")
+    app_path = (f'"{desktop_exe}" "{project_dir}" --minimize' if project_dir
+                else f'"{desktop_exe}" --minimize')
 
     try:
         key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE)

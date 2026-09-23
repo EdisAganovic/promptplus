@@ -130,3 +130,5 @@ Thumbs.db
 # Output directories
 dist/
 build/
+dist-electron/
+node_modules/

@@ -1,0 +1,26 @@
+{
+  "name": "promptplus",
+  "version": "0.5.0",
+  "private": true,
+  "description": "PromptPlus desktop prompt replacer",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:win": "electron-builder --win dir"
+  },
+  "devDependencies": {
+    "electron": "44.4.5",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.promptplus.desktop",
+    "productName": "PromptPlus",
+    "directories": { "output": "dist-electron" },
+    "files": ["electron/**/*", "package.json", "icon.ico"],
+    "extraResources": [
+      { "from": "dist/backend", "to": "backend", "filter": ["**/*"] },
+      { "from": "icon.ico", "to": "icon.ico" }
+    ],
+    "win": { "target": "dir", "signAndEditExecutable": false }
+  }
+}

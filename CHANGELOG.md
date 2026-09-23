@@ -2,6 +2,14 @@
 
 All notable changes to PromptPlus will be documented in this file.
 
+## [Unreleased] - Electron desktop migration
+
+### Changed
+- Replaced the PyQt desktop window and Quick Search with Electron windows and a system tray.
+- Moved keyboard replacement to a standalone Python backend launched by Electron.
+- Registered Quick Search through Electron's native global shortcut API, which reports shortcut collisions.
+- Windows builds now package a Qt-free Python backend inside the Electron application.
+
 ## [Unreleased] - 2026-09-23
 
 ### Changed

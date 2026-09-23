@@ -8,7 +8,7 @@ Routes:
 - GET  /delete/{keyword}  -> Delete prompt
 """
 import os
-from fastapi import FastAPI, Request, Form, UploadFile, File
+from fastapi import FastAPI, Request, Form, UploadFile, File, HTTPException
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -24,6 +24,17 @@ logger = logging.getLogger(__name__)
 from .utils import load_prompts, save_prompts, get_current_date, count_tokens, load_settings, save_settings, VERSION
 
 app = FastAPI()
+
+
+@app.get("/api/prompts")
+async def quick_search_prompts(request: Request):
+    """Contract: Electron main fetches keyword/content pairs with its private token."""
+    token = getattr(app.state, "desktop_token", None)
+    if not token or request.headers.get("X-PromptPlus-Token") != token:
+        raise HTTPException(status_code=403, detail="Desktop access required")
+    prompts = load_prompts()
+    return [{"keyword": key, "content": data["content"]}
+            for key, data in prompts.items() if isinstance(data.get("content"), str)]
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):

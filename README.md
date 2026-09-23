@@ -1,44 +1,39 @@
-# PromptPlus - Real-time Prompt Replacer
+# PromptPlus
 
-## Description
-A tool for managing prompts with keywords that are automatically replaced in real-time as you type in any application.
+PromptPlus replaces typed keywords with saved prompts in other applications. Electron provides the desktop dashboard, tray, and Quick Search; a local Python process serves the dashboard and watches for keyword triggers.
 
 ## Features
-- Define prompts with keywords (e.g., :translate, :summarize)
-- Automatic keyword replacement as you type in any application
-- Manage prompts through a web interface (FastAPI)
-- Open Quick Search with `Ctrl+Alt+P` to find and paste a saved prompt
-- Compatibility with Gemini AI models
-- Ability to set environment variables (API keys)
-- Animated loading screen with "Loading..." text and dots when the application starts
-- Borderless window design with buttons for minimization, maximization, and closing
 
-## Usage
-1. Start the application: `python main.py`
-2. The UI will open in a window (backend at `http://127.0.0.1:8080`)
-3. Add your prompts with keywords
-4. The text replacer automatically runs in the background. Type a keyword followed by Space to replace it.
-5. Press `Ctrl+Alt+P` to open Quick Search. The shortcut does not block key events in other apps, so a shortcut collision may still affect the active app.
+- Create, edit, tag, import, and export prompts in the desktop dashboard.
+- Type a keyword such as `:translate` followed by Space to replace it.
+- Press `Ctrl+Alt+P` on Windows/Linux (or `Command+Alt+P` on macOS) for Quick Search. Choose a prompt to paste it into the previously focused application.
+- Close the dashboard to keep PromptPlus in the system tray. The tray menu can reopen it or quit.
+- Prompt changes are saved atomically in `prompts.json`.
 
-![screenshot](screenshot.png)
+The global shortcut is registered through the operating system. If another application owns it, PromptPlus leaves that shortcut alone and Quick Search remains available in the tray menu.
 
-## Installation
-```
-uv pip install -r requirements.txt
+## Development on Windows
+
+Install Python dependencies into `.venv` and install the Electron dependencies:
+
+```powershell
+uv venv .venv
+uv pip install --python .venv\Scripts\python.exe -r requirements.txt
+npm install
+npm start
 ```
 
-## Running
+The Electron process starts `backend.py` automatically. Set `PROMPTPLUS_PYTHON` to another Python executable if you do not use `.venv`.
+
+## Build a Windows executable
+
+Install PyInstaller in the virtual environment, then run:
+
+```powershell
+uv pip install --python .venv\Scripts\python.exe pyinstaller
+.venv\Scripts\python.exe build.py
 ```
-python main.py
-```
 
-## Windows executable
+The result is `dist-electron/win-unpacked/PromptPlus.exe`. Keep the entire `win-unpacked` folder together; the `resources/backend` directory contains the Python service. The older `dist/PromptPlus` folder, if present, is a Qt build and is not the Electron application.
 
-Install the requirements and PyInstaller in a virtual environment, then run `python build.py`. The executable is produced at `dist/PromptPlus/PromptPlus.exe` with its supporting files in the same directory.
-
-## Notes
-- The application must have permissions for keyboard monitoring and keypress simulation
-- During replacement, text clipboard content is saved and restored after replacement when nonempty
-- The application saves prompts in `prompts.json` during development and in `%LOCALAPPDATA%/PromptPlus/prompts.json` in the Windows executable. Saves and imports replace this file atomically.
-- For the best experience, use keywords that will not appear accidentally in normal text
-- The web interface uses FastAPI instead of Streamlit due to compilation issues into EXE
+In a packaged build, prompts and settings are stored in `%LOCALAPPDATA%\PromptPlus`. Development uses the project directory. The app requires permission to monitor keyboard input and simulate paste events.
