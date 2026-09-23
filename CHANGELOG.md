@@ -12,6 +12,10 @@ All notable changes to PromptPlus will be documented in this file.
 - Windows distribution is a single installer EXE containing Electron and the Python backend.
 - Reduced installer size by packaging only the English Electron locale and removed duplicate backend staging and temporary release files.
 - Added an optional 150-prompt demo set across 15 categories; when `demo.json` is present it temporarily replaces personal prompts without modifying `prompts.json`.
+- Made prompt cards more compact and removed the placeholder date footer.
+- Matched the Windows system-tray icon to the green lightning Electron artwork.
+- Color-coded categories consistently in filters and cards, with 20% smaller card text to show more prompt content.
+- Matched the shortcut label and card edge to each category and refreshed the dashboard with calmer, Notion-inspired surfaces and controls.
 
 ## [Unreleased] - 2026-09-23
 

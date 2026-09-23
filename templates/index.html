@@ -18,7 +18,7 @@
     <link rel="icon" href="/favicon.ico" type="image/x-icon">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/static/style.css?v={{ version }}-3">
+    <link rel="stylesheet" href="/static/style.css?v={{ version }}-6">
 </head>
 
 <body class="d-flex flex-column min-vh-100">
@@ -61,7 +61,7 @@
 
     <div class="container flex-grow-1 py-4">
         {% if demo_mode %}
-        <div class="alert alert-info" role="status">
+        <div class="alert alert-info demo-banner" role="status">
             Demo mode: showing prompts from demo.json. Your personal prompts.json is unchanged.
         </div>
         {% endif %}
@@ -95,7 +95,7 @@
                                 <span class="tag-chip badge bg-tertiary text-secondary p-2 px-3 active"
                                     data-tag="all">Sve</span>
                                 {% for tag in all_tags %}
-                                <span class="tag-chip badge bg-tertiary text-secondary p-2 px-3" data-tag="{{ tag }}">{{
+                                <span class="tag-chip category-chip badge p-2 px-3" style="--category-color: {{ category_color(tag) }}" data-tag="{{ tag }}">{{
                                     tag }}</span>
                                 {% endfor %}
                             </div>
@@ -106,7 +106,7 @@
                     <div class="masonry-grid" id="promptsContainer">
                         {% for keyword, content in prompts.items() %}
                         {% set prompt_data = content %}
-                        <div class="masonry-item prompt-item" data-keyword="{{ keyword }}"
+                        <div class="masonry-item prompt-item" {% if prompt_data.tags %}style="--category-color: {{ category_color(prompt_data.tags[0]) }}"{% endif %} data-keyword="{{ keyword }}"
                             data-content="{{ prompt_data.content }}" data-tags="{{ prompt_data.tags|join(',') }}">
                             <div class="card card-accent">
                                 <div class="card-header d-flex justify-content-between align-items-center">
@@ -130,17 +130,11 @@
                                     {% if prompt_data.tags %}
                                     <div class="mt-2 text-wrap">
                                         {% for tag in prompt_data.tags %}
-                                        <span class="badge bg-soft-blue text-primary me-1 py-1 px-2"
-                                            style="font-size: 0.75rem; background: var(--bg-tertiary);"><i
-                                                class="fas fa-tag me-1"></i>{{ tag }}</span>
+                                        <span class="badge category-badge me-1"
+                                            style="--category-color: {{ category_color(tag) }}">{{ tag }}</span>
                                         {% endfor %}
                                     </div>
                                     {% endif %}
-                                </div>
-                                <div class="card-footer text-muted d-flex justify-content-between align-items-center"
-                                    style="font-size: 0.75rem; border-top: 1px solid var(--border-color); background: rgba(0,0,0,0.02);">
-                                    <span><i class="far fa-calendar-alt me-1"></i>{{ prompt_data.date or '02.02.2026'
-                                        }}</span>
                                 </div>
                             </div>
                         </div>

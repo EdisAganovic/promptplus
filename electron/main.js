@@ -13,6 +13,9 @@ let quitting = false;
 const iconPath = () => app.isPackaged
   ? path.join(process.resourcesPath, 'icon.ico')
   : path.join(app.getAppPath(), 'icon.ico');
+const trayIconPath = () => app.isPackaged
+  ? path.join(process.resourcesPath, 'tray.ico')
+  : path.join(__dirname, 'tray.ico');
 
 // Contract: Python prints {event:"ready",port,token}; Electron fetches
 // /api/prompts with X-PromptPlus-Token; the picker receives keyword/content;
@@ -112,7 +115,7 @@ function showSearch() {
 }
 
 function createTray() {
-  tray = new Tray(iconPath());
+  tray = new Tray(trayIconPath());
   tray.setToolTip('PromptPlus');
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open PromptPlus', click: () => mainWindow.show() },

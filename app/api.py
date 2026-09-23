@@ -16,6 +16,7 @@ import shutil
 import json
 import traceback
 import logging
+import hashlib
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -24,6 +25,26 @@ logger = logging.getLogger(__name__)
 from .utils import load_prompts, save_prompts, get_prompts_file, DEMO_FILE, get_current_date, count_tokens, load_settings, save_settings, VERSION
 
 app = FastAPI()
+
+CATEGORY_COLORS = {
+    "writing": "#0f766e", "editing": "#4338ca", "email": "#1d4ed8",
+    "marketing": "#b45309", "social media": "#be185d", "learning": "#6d28d9",
+    "research": "#0e7490", "coding": "#475569", "data": "#15803d",
+    "planning": "#a16207", "productivity": "#4d7c0f", "business": "#b91c1c",
+    "creative": "#a21caf", "translation": "#0369a1", "personal": "#be123c",
+}
+
+
+def category_color(tag: str) -> str:
+    """Stable palette for demo and user-defined categories alike."""
+    name = tag.strip().casefold()
+    if not name:
+        return "#64748b"
+    if name in CATEGORY_COLORS:
+        return CATEGORY_COLORS[name]
+    palette = tuple(CATEGORY_COLORS.values())
+    index = int.from_bytes(hashlib.blake2b(name.encode("utf-8"), digest_size=2).digest(), "big") % len(palette)
+    return palette[index]
 
 
 @app.get("/api/prompts")
@@ -99,6 +120,7 @@ async def read_root(request: Request):
         "start_with_windows": settings.get("start_with_windows", False),
         "demo_mode": get_prompts_file() == DEMO_FILE,
         "all_tags": sorted(list(set(tag for p in processed_prompts.values() for tag in p.get('tags', [])))),
+        "category_color": category_color,
         "version": VERSION
     })
 

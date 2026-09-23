@@ -21,6 +21,7 @@
     "extraResources": [
       { "from": "dist/PromptPlusBackend", "to": "backend", "filter": ["**/*"] },
       { "from": "demo.json", "to": "backend/demo.json" },
+      { "from": "electron/tray.ico", "to": "tray.ico" },
       { "from": "icon.ico", "to": "icon.ico" }
     ],
     "win": { "target": "nsis", "icon": "electron/icon.svg", "signAndEditExecutable": false },
