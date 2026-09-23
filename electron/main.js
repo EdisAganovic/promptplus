@@ -29,7 +29,7 @@ function startBackend() {
     cwd: app.isPackaged ? path.dirname(executable) : app.getAppPath(),
     env: {
       ...process.env,
-      PROMPTPLUS_DESKTOP_EXE: process.execPath,
+      PROMPTPLUS_DESKTOP_EXE: process.env.PORTABLE_EXECUTABLE_FILE || process.execPath,
       ...(app.isPackaged ? {} : { PROMPTPLUS_DESKTOP_PROJECT: app.getAppPath() }),
     },
     stdio: ['pipe', 'pipe', 'pipe'],

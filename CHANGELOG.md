@@ -9,6 +9,7 @@ All notable changes to PromptPlus will be documented in this file.
 - Moved keyboard replacement to a standalone Python backend launched by Electron.
 - Registered Quick Search through Electron's native global shortcut API, which reports shortcut collisions.
 - Windows builds now package a Qt-free Python backend inside the Electron application.
+- Windows distribution is a single installer EXE containing Electron and the Python backend.
 
 ## [Unreleased] - 2026-09-23
 

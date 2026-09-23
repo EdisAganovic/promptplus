@@ -6,7 +6,7 @@
   "main": "electron/main.js",
   "scripts": {
     "start": "electron .",
-    "dist:win": "electron-builder --win dir"
+    "dist:win": "electron-builder --win nsis"
   },
   "devDependencies": {
     "electron": "44.4.5",
@@ -21,6 +21,7 @@
       { "from": "dist/backend", "to": "backend", "filter": ["**/*"] },
       { "from": "icon.ico", "to": "icon.ico" }
     ],
-    "win": { "target": "dir", "signAndEditExecutable": false }
+    "win": { "target": "nsis", "icon": "electron/icon.svg", "signAndEditExecutable": false },
+    "nsis": { "artifactName": "PromptPlus-Setup-${version}.exe" }
   }
 }

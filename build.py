@@ -1,6 +1,7 @@
 """Build the Python backend and package it with the Electron Windows app."""
 
 import os
+import json
 import subprocess
 import sys
 from pathlib import Path
@@ -9,6 +10,7 @@ import PyInstaller.__main__
 
 
 ROOT = Path(__file__).resolve().parent
+VERSION = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))["version"]
 if sys.platform != "win32":
     raise SystemExit("This build currently targets Windows only.")
 
@@ -48,4 +50,4 @@ import shutil
 
 shutil.copytree(backend_output, desktop_backend)
 subprocess.run(["npm.cmd", "run", "dist:win"], cwd=ROOT, check=True)
-print(f"Electron executable: {ROOT / 'dist-electron' / 'win-unpacked' / 'PromptPlus.exe'}")
+print(f"Installer executable: {ROOT / 'dist-electron' / f'PromptPlus-Setup-{VERSION}.exe'}")
