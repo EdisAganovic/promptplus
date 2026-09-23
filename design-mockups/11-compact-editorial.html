@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PromptPlus — Compact Notion-inspired Library</title>
+  <script>
+    (() => {
+      const requested = new URLSearchParams(location.search).get('theme');
+      const saved = localStorage.getItem('promptplus-mockup-theme');
+      const preferred = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+      document.documentElement.dataset.theme = ['light', 'dark'].includes(requested) ? requested : (saved || preferred);
+    })();
+  </script>
+  <style>
+    :root {
+      font: 13px/1.45 Inter, Segoe UI, Arial, sans-serif;
+      --page: #fafafa; --surface: #fff; --ink: #171717; --muted: #626262;
+      --faint: #888; --line: #e1e1e1; --soft: #f1f1f1; --accent: #202020;
+      --accent-ink: #fff; --notice: #f2f2f2; --notice-ink: #575757;
+      --badge-bg: #ededed; --badge-fg: #505050;
+      color-scheme: light;
+    }
+    :root[data-theme="dark"] {
+      --page: #171717; --surface: #242424; --ink: #f2f2f2; --muted: #b5b5b5;
+      --faint: #999; --line: #3c3c3c; --soft: #303030; --accent: #f0f0f0;
+      --accent-ink: #171717; --notice: #292929; --notice-ink: #cbcbcb;
+      --badge-bg: #3a3a3a; --badge-fg: #d0d0d0;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--page); color: var(--ink); }
+    button, input { font: inherit; }
+    button { cursor: pointer; }
+    button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .shell { max-width: 1360px; margin: auto; padding: 0 28px 36px; }
+    header { height: 56px; border-bottom: 1px solid var(--line); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .brand { font-size: 17px; font-weight: 750; letter-spacing: -.04em; white-space: nowrap; }
+    .brand span { color: var(--accent); }
+    nav { display: flex; align-items: center; gap: 3px; }
+    nav button { border: 0; background: transparent; color: var(--muted); padding: 7px 9px; border-radius: 5px; }
+    nav button:hover, .card-actions button:hover { background: var(--soft); color: var(--ink); }
+    nav .new { background: var(--accent); color: var(--accent-ink); font-weight: 650; padding: 8px 12px; margin-left: 5px; }
+    nav .new:hover { background: var(--accent); color: var(--accent-ink); opacity: .9; }
+    #themeToggle { min-width: 74px; border: 1px solid var(--line); margin-left: 4px; }
+    .crumb { color: var(--faint); font-size: 12px; padding: 13px 0 0; }
+    .crumb strong { color: var(--muted); font-weight: 500; }
+    .intro { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 12px 0 14px; }
+    .page-title { display: flex; align-items: center; gap: 10px; }
+    .page-icon { width: 29px; height: 29px; display: grid; place-items: center; background: var(--soft); border-radius: 5px; font-size: 16px; color: var(--muted); }
+    .intro h1 { font: 600 24px/1.15 Inter, Segoe UI, Arial, sans-serif; letter-spacing: -.035em; margin: 0 0 3px; }
+    .intro p { color: var(--muted); margin: 0; }
+    .count { white-space: nowrap; color: var(--muted); }
+    .count strong { color: var(--ink); font-weight: 650; }
+    .notice { background: var(--notice); color: var(--notice-ink); border-radius: 4px; padding: 7px 10px; font-size: 12px; margin-bottom: 13px; }
+    .toolbar { display: flex; align-items: center; gap: 8px; margin-bottom: 11px; }
+    .search { width: min(390px, 100%); height: 37px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 5px; padding: 0 11px; }
+    .search::placeholder { color: var(--faint); }
+    .filter { height: 37px; background: var(--surface); border: 1px solid var(--line); color: var(--muted); padding: 0 11px; border-radius: 5px; white-space: nowrap; }
+    .view-strip { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid var(--line); margin: 0 0 9px; }
+    .view-switch, .chips { display: flex; align-items: center; flex-wrap: wrap; gap: 4px; }
+    .view-switch { padding-right: 9px; margin-right: 2px; border-right: 1px solid var(--line); }
+    .view-switch button { border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); padding: 6px 9px 7px; font-size: 12px; white-space: nowrap; }
+    .view-switch button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+    .view-switch button:hover { background: var(--soft); }
+    .chips button { border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); padding: 6px 9px 7px; font-size: 12px; }
+    .chips button:hover { background: var(--soft); }
+    .chips button[aria-pressed="true"] { color: var(--ink); border-bottom-color: var(--ink); font-weight: 600; }
+    .results { color: var(--faint); font-size: 12px; margin: 0 0 9px; }
+    .cards { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; }
+    .card { background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 13px 14px 11px; min-height: 150px; display: flex; flex-direction: column; min-width: 0; }
+    .card:hover { background: var(--soft); }
+    .card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .number { color: var(--faint); font-size: 12px; }
+    .more { color: var(--faint); border: 0; background: transparent; padding: 1px 5px; border-radius: 4px; }
+    .card-actions { display: flex; align-items: center; gap: 2px; }
+    .card-actions button { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--muted); }
+    .card-actions svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+    .card h2 { font: 600 15px/1.3 Inter, Segoe UI, Arial, sans-serif; letter-spacing: -.015em; margin: 6px 0 5px; }
+    .card p { color: var(--muted); margin: 0; line-height: 1.43; flex: 1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; border-top: 1px solid var(--line); padding-top: 7px; margin-top: 10px; font-size: 11px; }
+    .tag { border-radius: 3px; padding: 2px 6px; background: var(--badge-bg); color: var(--badge-fg); }
+    .keyword { color: var(--faint); white-space: nowrap; text-overflow: ellipsis; overflow: hidden; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--surface); }
+    .prompt-table { width: 100%; min-width: 690px; border-collapse: collapse; table-layout: fixed; }
+    .prompt-table th { text-align: left; color: var(--faint); background: var(--page); font-size: 11px; font-weight: 500; padding: 8px 12px; border-bottom: 1px solid var(--line); }
+    .prompt-table th:nth-child(1) { width: 23%; }
+    .prompt-table th:nth-child(2) { width: 35%; }
+    .prompt-table th:nth-child(3) { width: 14%; }
+    .prompt-table th:nth-child(4) { width: 18%; }
+    .prompt-table th:nth-child(5) { width: 10%; }
+    .prompt-table td { border-bottom: 1px solid var(--line); padding: 7px 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .prompt-table tr:last-child td { border-bottom: 0; }
+    .prompt-table tbody tr:hover { background: var(--soft); }
+    .prompt-table .table-name { color: var(--ink); font-weight: 600; }
+    .prompt-table .table-name span { color: var(--faint); font-weight: 400; margin-right: 7px; }
+    .prompt-table .table-actions { overflow: visible; padding: 2px 6px; }
+    .prompt-table .table-actions .card-actions { justify-content: flex-end; }
+    .prompt-table .table-actions button { width: 26px; height: 26px; }
+    .empty { color: var(--muted); padding: 35px 0; }
+    [hidden] { display: none !important; }
+    @media (max-width: 900px) { .cards { grid-template-columns: repeat(2,minmax(0,1fr)); } nav .secondary { display: none; } }
+    @media (max-width: 610px) { .shell { padding: 0 15px 28px; } .cards { grid-template-columns: 1fr; } .intro { padding: 12px 0; } .intro h1 { font-size: 21px; } .count { display: none; } .toolbar { flex-wrap: wrap; } .search { width: 100%; } nav .language { display: none; } .card { min-height: 134px; } }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand"><span>ϟ</span> PromptPlus</div>
+      <nav aria-label="App actions">
+        <button class="secondary" type="button">About</button>
+        <button class="secondary" type="button">Import / Export</button>
+        <button class="secondary" type="button">Settings</button>
+        <button class="language" type="button" aria-label="Language: English">EN</button>
+        <button id="themeToggle" type="button" aria-label="Switch color theme">◐ Dark</button>
+        <button class="new" type="button">＋ New</button>
+      </nav>
+    </header>
+    <div class="crumb">Workspace <span aria-hidden="true">/</span> <strong>Prompt library</strong></div>
+    <section class="intro"><div class="page-title"><span class="page-icon" aria-hidden="true">▤</span><div><h1>Prompt library</h1><p>Find the right words, faster.</p></div></div><div class="count"><strong>150</strong> prompts</div></section>
+    <div class="notice">ⓘ &nbsp;Demo mode · Your personal prompts are unchanged.</div>
+    <div class="toolbar"><input id="search" class="search" type="search" aria-label="Search prompts" placeholder="⌕  Search prompts"><button class="filter" type="button">All categories ▾</button></div>
+    <div class="view-strip">
+    <div class="view-switch" role="group" aria-label="View prompts as">
+      <button id="galleryView" type="button" aria-pressed="true">▦ Gallery</button>
+      <button id="listView" type="button" aria-pressed="false">☰ List</button>
+    </div>
+    <div class="chips" role="group" aria-label="Filter by category">
+      <button type="button" data-filter="all" aria-pressed="true">All</button>
+      <button type="button" data-filter="Writing" aria-pressed="false">Writing</button>
+      <button type="button" data-filter="Coding" aria-pressed="false">Coding</button>
+      <button type="button" data-filter="Editing" aria-pressed="false">Editing</button>
+      <button type="button" data-filter="Marketing" aria-pressed="false">Marketing</button>
+      <button type="button" data-filter="Research" aria-pressed="false">Research</button>
+    </div>
+    </div>
+    <p id="results" class="results" aria-live="polite">Showing 9 sample prompts</p>
+    <main class="cards">
+      <article class="card writing" data-category="Writing"><div class="card-top"><span class="number">01</span><button class="more" type="button" aria-label="More options for Write a brief">···</button></div><h2>Write a brief</h2><p>Explain a topic for a busy reader. Lead with the takeaway and keep it concise.</p><div class="meta"><span class="tag">Writing</span><span class="keyword">:write-brief ↗</span></div></article>
+      <article class="card writing" data-category="Writing"><div class="card-top"><span class="number">02</span><button class="more" type="button" aria-label="More options for Explore deeply">···</button></div><h2>Explore deeply</h2><p>Cover key ideas, examples, common mistakes, and a practical conclusion.</p><div class="meta"><span class="tag">Writing</span><span class="keyword">:write-deep ↗</span></div></article>
+      <article class="card coding" data-category="Coding"><div class="card-top"><span class="number">03</span><button class="more" type="button" aria-label="More options for Review code">···</button></div><h2>Review code</h2><p>Check correctness, clarity, edge cases, and security risks.</p><div class="meta"><span class="tag">Coding</span><span class="keyword">:code-review ↗</span></div></article>
+      <article class="card editing" data-category="Editing"><div class="card-top"><span class="number">04</span><button class="more" type="button" aria-label="More options for Find the right tone">···</button></div><h2>Find the right tone</h2><p>Make a message sound warmer without changing its meaning.</p><div class="meta"><span class="tag">Editing</span><span class="keyword">:edit-tone ↗</span></div></article>
+      <article class="card marketing" data-category="Marketing"><div class="card-top"><span class="number">05</span><button class="more" type="button" aria-label="More options for Campaign ideas">···</button></div><h2>Campaign ideas</h2><p>Generate distinct campaign directions for a specific audience and goal.</p><div class="meta"><span class="tag">Marketing</span><span class="keyword">:campaign-ideas ↗</span></div></article>
+      <article class="card research" data-category="Research"><div class="card-top"><span class="number">06</span><button class="more" type="button" aria-label="More options for Research summary">···</button></div><h2>Research summary</h2><p>Turn notes and findings into a clear summary with next steps.</p><div class="meta"><span class="tag">Research</span><span class="keyword">:research-summary ↗</span></div></article>
+      <article class="card writing" data-category="Writing"><div class="card-top"><span class="number">07</span><button class="more" type="button" aria-label="More options for Tell a story">···</button></div><h2>Tell a story</h2><p>Turn an idea into a vivid short story with conflict and a satisfying end.</p><div class="meta"><span class="tag">Writing</span><span class="keyword">:write-story ↗</span></div></article>
+      <article class="card coding" data-category="Coding"><div class="card-top"><span class="number">08</span><button class="more" type="button" aria-label="More options for Explain code">···</button></div><h2>Explain code</h2><p>Describe intent and behavior in language a teammate can follow.</p><div class="meta"><span class="tag">Coding</span><span class="keyword">:code-explain ↗</span></div></article>
+      <article class="card editing" data-category="Editing"><div class="card-top"><span class="number">09</span><button class="more" type="button" aria-label="More options for Improve clarity">···</button></div><h2>Improve clarity</h2><p>Fix ambiguous references and awkward sentences without adding claims.</p><div class="meta"><span class="tag">Editing</span><span class="keyword">:edit-clarity ↗</span></div></article>
+    </main>
+    <section id="listPanel" class="table-wrap" aria-label="Prompt list" hidden>
+      <table class="prompt-table">
+        <thead><tr><th scope="col">Name</th><th scope="col">Preview</th><th scope="col">Category</th><th scope="col">Shortcut</th><th scope="col">Actions</th></tr></thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </section>
+    <p id="empty" class="empty" hidden>No matching sample prompts.</p>
+  </div>
+  <template id="cardActionsTemplate">
+    <div class="card-actions">
+      <button class="edit" type="button" title="Edit prompt" aria-label="Edit prompt">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-6"/><path d="m16 4 4 4-9 9-4 1 1-4 9-9a2.83 2.83 0 0 1 4 4"/></svg>
+      </button>
+      <button class="delete" type="button" title="Delete prompt" aria-label="Delete prompt">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18M8 6V4h8v2m3 0-1 14H6L5 6m5 4v7m4-7v7"/></svg>
+      </button>
+    </div>
+  </template>
+  <script>
+    const root = document.documentElement;
+    const themeToggle = document.getElementById('themeToggle');
+    function renderTheme() {
+      const dark = root.dataset.theme === 'dark';
+      themeToggle.textContent = dark ? '☀ Light' : '◐ Dark';
+      themeToggle.setAttribute('aria-label', dark ? 'Switch to light mode' : 'Switch to dark mode');
+    }
+    themeToggle.addEventListener('click', () => {
+      root.dataset.theme = root.dataset.theme === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('promptplus-mockup-theme', root.dataset.theme);
+      renderTheme();
+    });
+    renderTheme();
+
+    const search = document.getElementById('search');
+    const cards = [...document.querySelectorAll('.card')];
+    const actionsTemplate = document.getElementById('cardActionsTemplate');
+    cards.forEach(card => {
+      const actions = actionsTemplate.content.firstElementChild.cloneNode(true);
+      const name = card.querySelector('h2').textContent;
+      actions.querySelector('.edit').setAttribute('aria-label', `Edit ${name}`);
+      actions.querySelector('.delete').setAttribute('aria-label', `Delete ${name}`);
+      card.querySelector('.more').replaceWith(actions);
+    });
+    const listBody = document.getElementById('listBody');
+    const rows = cards.map(card => {
+      const row = document.createElement('tr');
+      const name = card.querySelector('h2').textContent;
+      const nameCell = row.insertCell();
+      nameCell.className = 'table-name';
+      const pageIcon = document.createElement('span');
+      pageIcon.textContent = '▤';
+      pageIcon.setAttribute('aria-hidden', 'true');
+      nameCell.append(pageIcon, name);
+      row.insertCell().textContent = card.querySelector('p').textContent;
+      row.insertCell().append(card.querySelector('.tag').cloneNode(true));
+      row.insertCell().textContent = card.querySelector('.keyword').textContent.replace(' ↗', '');
+      const actionsCell = row.insertCell();
+      actionsCell.className = 'table-actions';
+      const actions = card.querySelector('.card-actions').cloneNode(true);
+      actionsCell.append(actions);
+      listBody.append(row);
+      return row;
+    });
+    const galleryPanel = document.querySelector('main.cards');
+    const listPanel = document.getElementById('listPanel');
+    const galleryView = document.getElementById('galleryView');
+    const listView = document.getElementById('listView');
+    function setView(view) {
+      const isList = view === 'list';
+      galleryPanel.hidden = isList;
+      listPanel.hidden = !isList;
+      galleryView.setAttribute('aria-pressed', String(!isList));
+      listView.setAttribute('aria-pressed', String(isList));
+      localStorage.setItem('promptplus-mockup-view', isList ? 'list' : 'gallery');
+    }
+    galleryView.addEventListener('click', () => setView('gallery'));
+    listView.addEventListener('click', () => setView('list'));
+    const requestedView = new URLSearchParams(location.search).get('view');
+    setView(requestedView || localStorage.getItem('promptplus-mockup-view') || 'gallery');
+    const chips = [...document.querySelectorAll('.chips button')];
+    const results = document.getElementById('results');
+    const empty = document.getElementById('empty');
+    let selectedCategory = 'all';
+    function filterCards() {
+      const term = search.value.trim().toLocaleLowerCase();
+      let visible = 0;
+      cards.forEach((card, index) => {
+        const matchesCategory = selectedCategory === 'all' || card.dataset.category === selectedCategory;
+        const matchesText = card.textContent.toLocaleLowerCase().includes(term);
+        card.hidden = !(matchesCategory && matchesText);
+        rows[index].hidden = card.hidden;
+        if (!card.hidden) visible++;
+      });
+      results.textContent = `Showing ${visible} sample prompt${visible === 1 ? '' : 's'}`;
+      empty.hidden = visible !== 0;
+    }
+    search.addEventListener('input', filterCards);
+    chips.forEach(chip => chip.addEventListener('click', () => {
+      selectedCategory = chip.dataset.filter;
+      chips.forEach(item => item.setAttribute('aria-pressed', String(item === chip)));
+      filterCards();
+    }));
+  </script>
+</body>
+</html>

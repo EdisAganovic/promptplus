@@ -35,7 +35,7 @@ uv pip install --python .venv\Scripts\python.exe pyinstaller
 .venv\Scripts\python.exe build.py
 ```
 
-The result is one installer file: `dist-electron/PromptPlus-Setup-0.5.0.exe`. Run it to install the Electron application and its bundled Python backend. The build script removes temporary Electron output after a successful build. The older `dist/PromptPlus` folder, if present, is a Qt build and is not the Electron application.
+The result is one installer file: `dist-electron/PromptPlus-Setup-0.6.0.exe`. Run it to install the Electron application and its bundled Python backend. The build script removes temporary Electron output after a successful build. The older `dist/PromptPlus` folder, if present, is a Qt build and is not the Electron application.
 
 In a packaged build, prompts and settings are stored in `%LOCALAPPDATA%\PromptPlus`. Development uses the project directory. The app requires permission to monitor keyboard input and simulate paste events.
 

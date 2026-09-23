@@ -25,9 +25,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="/static/style.css?v={{ version }}-7">
+    <link rel="stylesheet" href="/static/library.css?v={{ version }}-7">
 </head>
 
-<body class="d-flex flex-column min-vh-100">
+<body class="library-ui d-flex flex-column min-vh-100">
     <div class="loading-overlay" id="loadingOverlay">
         <div class="text-center">
             <div class="spinner-border text-primary mb-3" role="status"></div>
@@ -35,139 +36,109 @@
         </div>
     </div>
 
-    <nav class="navbar navbar-expand-lg sticky-top">
-        <div class="container">
-            <a class="navbar-brand d-flex align-items-center fs-4" href="#" style="color: var(--text-primary);">
-                <i class="fas fa-bolt me-2" style="color: var(--accent-primary); font-size: 1.5rem;"></i>
-                <span class="fw-black">Prompt<span style="color: var(--accent-primary);">Plus</span></span>
+    <nav class="navbar library-nav sticky-top">
+        <div class="container library-shell">
+            <a class="navbar-brand d-flex align-items-center" href="/">
+                <img class="library-logo" src="/static/icon.svg" alt="" width="24" height="24">
+                <span>PromptPlus</span>
             </a>
-            <div class="d-flex align-items-center gap-2">
+            <div class="library-nav-actions d-flex align-items-center">
                 <button class="btn btn-nav-action" type="button" data-bs-toggle="modal" data-bs-target="#aboutModal"
                     data-i18n-title="nav.aboutTitle" title="O aplikaciji PromptPlus">
-                    <i class="fas fa-info-circle me-1"></i> <span data-i18n="nav.about">O aplikaciji</span>
+                    <span data-i18n="nav.about">O aplikaciji</span>
                 </button>
-                <a href="/export" class="btn btn-nav-action" data-i18n-title="nav.exportTitle" title="Izvezi kao JSON">
-                    <i class="fas fa-file-export me-1"></i> <span data-i18n="nav.export">Izvezi</span>
-                </a>
                 <button class="btn btn-nav-action" type="button" data-bs-toggle="modal" data-bs-target="#importModal"
-                    data-i18n-title="nav.importTitle" title="Uvezi iz JSON-a">
-                    <i class="fas fa-file-import me-1"></i> <span data-i18n="nav.import">Uvezi</span>
-                </button>
+                    data-i18n-title="nav.importTitle" title="Uvezi iz JSON-a"><span data-i18n="nav.import">Uvezi</span></button>
+                <a href="/export" class="btn btn-nav-action" data-i18n-title="nav.exportTitle" title="Izvezi kao JSON"><span data-i18n="nav.export">Izvezi</span></a>
                 <button class="btn btn-nav-action" type="button" data-bs-toggle="modal" data-bs-target="#settingsModal"
                     data-i18n-title="nav.settings" title="Postavke">
-                    <i class="fas fa-cog"></i>
+                    <span data-i18n="nav.settings">Postavke</span>
                 </button>
                 <button class="lang-toggle" id="langToggle" data-i18n-title="nav.toggleLang" title="Promijeni jezik (BS / EN)" aria-label="Toggle language">
-                    <i class="fas fa-globe me-1"></i><span id="langLabel" class="lang-code">BS</span>
+                    <span id="langLabel" class="lang-code">BS</span>
                 </button>
-                <button class="theme-toggle" id="themeToggle" data-i18n-title="nav.toggleTheme" title="Promijeni temu">
+                <button class="theme-toggle" id="themeToggle" data-i18n-title="nav.toggleTheme" title="Promijeni temu" aria-label="Promijeni temu">
                     <i class="fas fa-moon"></i>
                     <i class="fas fa-sun"></i>
+                    <span id="themeLabel" data-i18n="theme.dark">Tamno</span>
                 </button>
             </div>
         </div>
     </nav>
 
-    <div class="container flex-grow-1 py-4">
-        {% if demo_mode %}
-        <div class="alert alert-info demo-banner" role="status" data-i18n="demo.banner">
-            Demo mod: prikazuju se promptovi iz demo.json. Vaš lični prompts.json je nepromijenjen.
+    {% macro prompt_actions(keyword, prompt_data) %}
+    <div class="library-actions">
+        <button type="button" class="btn-edit-prompt" data-keyword="{{ keyword }}" data-content="{{ prompt_data.content }}"
+            data-tags="{{ prompt_data.tags|join(', ') }}" data-i18n-title="prompt.editTitle" title="Uredi prompt" aria-label="Uredi {{ keyword }}">
+            <i class="far fa-pen-to-square" aria-hidden="true"></i>
+        </button>
+        <button type="button" class="btn-delete-confirm" data-keyword="{{ keyword }}" data-url="/delete/{{ keyword|urlencode }}"
+            data-i18n-title="prompt.deleteTitle" title="Obriši prompt" aria-label="Obriši {{ keyword }}">
+            <i class="far fa-trash-can" aria-hidden="true"></i>
+        </button>
+    </div>
+    {% endmacro %}
+    <main class="container library-shell library-main flex-grow-1">
+        <div class="library-heading">
+            <div class="library-heading-inner"><span class="library-page-icon" aria-hidden="true"><i class="far fa-file-lines"></i></span>
+                <h1 data-i18n="library.title">Biblioteka promptova</h1></div>
+            <button class="btn btn-accent library-new" type="button" data-bs-toggle="modal" data-bs-target="#addPromptModal"><i class="fas fa-plus" aria-hidden="true"></i><span data-i18n="search.addBtn">Dodaj</span></button>
         </div>
-        {% endif %}
-        <div class="row">
-            <!-- Main Content -->
-            <div class="col-12">
-                <div class="row mb-4">
-                    <div class="col-12">
-                            <!-- Search Container -->
-                            <div class="search-container d-flex gap-3 align-items-center">
-                                <div class="search-input-wrapper flex-grow-1">
-                                    <i class="fas fa-search search-icon"></i>
-                                    <input type="text" id="searchInput" class="search-input w-100"
-                                        placeholder="Pretraži promptove..." data-i18n-placeholder="search.placeholder">
-                                    <div class="shortcut-hint d-none d-md-flex align-items-center gap-1 me-2">
-                                        <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>P</kbd>
-                                    </div>
-                                    <button class="search-clear" type="button" id="searchClear">
-                                        <i class="fas fa-times"></i>
-                                    </button>
-                                </div>
-                                <button class="btn btn-accent d-flex align-items-center justify-content-center" 
-                                    type="button" data-bs-toggle="modal" data-bs-target="#addPromptModal" 
-                                    style="height: 48px; min-width: 120px; font-weight: 600; font-size: 15px;">
-                                    <i class="fas fa-plus me-2"></i> <span data-i18n="search.addBtn">Dodaj</span>
-                                </button>
-                            </div>
-                            <div id="tagFilters" class="d-flex flex-wrap align-items-center">
-                                <span class="text-muted small me-2"><i class="fas fa-filter me-1"></i>
-                                    <span data-i18n="filters.label">Filteri:</span></span>
-                                <span class="tag-chip badge bg-tertiary text-secondary p-2 px-3 active"
-                                    data-tag="all" data-i18n="filters.all">Sve</span>
-                                {% for tag in all_tags %}
-                                <span class="tag-chip category-chip badge p-2 px-3" style="--category-color: {{ category_color(tag) }}" data-tag="{{ tag }}">{{
-                                    tag }}</span>
-                                {% endfor %}
-                            </div>
-                        </div>
-                    </div>
-
-                    {% if prompts %}
-                    <div class="masonry-grid" id="promptsContainer">
-                        {% for keyword, content in prompts.items() %}
-                        {% set prompt_data = content %}
-                        <div class="masonry-item prompt-item" {% if prompt_data.tags %}style="--category-color: {{ category_color(prompt_data.tags[0]) }}"{% endif %} data-keyword="{{ keyword }}"
-                            data-content="{{ prompt_data.content }}" data-tags="{{ prompt_data.tags|join(',') }}">
-                            <div class="card card-accent">
-                                <div class="card-header d-flex justify-content-between align-items-center">
-                                    <div class="prompt-keyword">{{ keyword }}</div>
-                                    <div class="action-buttons">
-                                        <button type="button" class="btn btn-sm btn-outline-light me-1 btn-edit-prompt"
-                                            data-keyword="{{ keyword }}"
-                                            data-content="{{ prompt_data.content }}"
-                                            data-tags="{{ prompt_data.tags|join(', ') }}"
-                                            data-i18n-title="prompt.editTitle"
-                                            title="Uredi prompt">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-danger btn-delete-confirm"
-                                            data-keyword="{{ keyword }}" data-url="/delete/{{ keyword }}"
-                                            data-i18n-title="prompt.deleteTitle"
-                                            title="Obriši prompt">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <p class="card-text">{{ prompt_data.content }}</p>
-                                    {% if prompt_data.tags %}
-                                    <div class="mt-2 text-wrap">
-                                        {% for tag in prompt_data.tags %}
-                                        <span class="badge category-badge me-1"
-                                            style="--category-color: {{ category_color(tag) }}">{{ tag }}</span>
-                                        {% endfor %}
-                                    </div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                    {% else %}
-                    <div class="empty-state rounded-4">
-                        <div class="mb-4">
-                            <i class="fas fa-inbox fa-5x text-muted" style="opacity: 0.3;"></i>
-                        </div>
-                        <h4 class="mb-3" data-i18n="empty.title">Nema dodanih promptova</h4>
-                        <p class="text-muted mb-4" data-i18n="empty.subtitle">Dodajte svoj prvi prompt da biste počeli koristiti PromptPlus</p>
-                        <button class="btn btn-accent btn-lg px-4 py-2" data-bs-toggle="modal"
-                            data-bs-target="#addPromptModal">
-                            <i class="fas fa-plus me-2"></i> <span data-i18n="empty.addBtn">Dodaj</span>
-                        </button>
-                    </div>
-                    {% endif %}
+        {% if demo_mode %}<div class="library-notice" role="status" data-i18n="demo.banner">Demo mod: prikazuju se promptovi iz demo.json. Vaš lični prompts.json je nepromijenjen.</div>{% endif %}
+        <div class="library-workspace">
+        <aside class="library-sidebar" aria-label="Tags" tabindex="0">
+            <div class="library-sidebar-title" data-i18n="library.tags">Tagovi</div>
+            <div id="tagFilters" class="library-filters" role="group" aria-label="Filter by tags">
+                <button type="button" class="tag-chip active" data-tag="all" aria-pressed="true" data-i18n="filters.all">Sve</button>
+                {% for tag in all_tags %}<button type="button" class="tag-chip" data-tag="{{ tag }}" aria-pressed="false">{{ tag }}</button>{% endfor %}
+            </div>
+        </aside>
+        <section class="library-content" aria-label="Prompt library">
+        <div class="library-search-row">
+            <div class="library-search-field"><i class="fas fa-search" aria-hidden="true"></i><input type="search" id="searchInput" data-i18n-placeholder="search.placeholder" placeholder="Pretraži promptove..."><button type="button" id="searchClear" aria-label="Clear search"><i class="fas fa-xmark" aria-hidden="true"></i></button></div>
+            <span class="library-shortcut shortcut-display">Ctrl + Alt + P</span>
+        </div>
+        <div class="library-viewbar">
+            <div class="library-view-switch" role="group" aria-label="Prompt view">
+                <button type="button" id="galleryView" class="active" aria-pressed="true"><i class="fas fa-border-all" aria-hidden="true"></i><span data-i18n="library.gallery">Galerija</span></button>
+                <button type="button" id="listView" aria-pressed="false"><i class="fas fa-list" aria-hidden="true"></i><span data-i18n="library.list">Lista</span></button>
             </div>
         </div>
-    </div>
+        <div class="library-prompt-scroll" id="promptScroll" tabindex="0" aria-label="Prompt results">
+        {% if prompts %}
+        <div class="library-grid" id="promptsContainer">
+            {% for keyword, prompt_data in prompts.items() %}
+            <article class="library-card prompt-item" data-keyword="{{ keyword }}" data-content="{{ prompt_data.content }}" data-tags="{{ prompt_data.tags|join(',') }}">
+                <div class="library-card-top"><span class="library-index">{{ '%02d'|format(loop.index) }}</span>{{ prompt_actions(keyword, prompt_data) }}</div>
+                <h2>{{ keyword|replace(':', '')|replace('demo-', '')|replace('-', ' ')|title }}</h2>
+                <p class="library-preview">{{ prompt_data.content }}</p>
+                <div class="library-meta"><span class="library-tags">{% for tag in prompt_data.tags %}<span class="library-tag">{{ tag }}</span>{% endfor %}</span><span class="library-keyword">{{ keyword }}</span></div>
+            </article>
+            {% endfor %}
+        </div>
+        <div class="library-table-wrap" id="listPanel" hidden>
+            <table class="library-table"><thead><tr>
+                <th scope="col" data-i18n="library.name">Naziv</th><th scope="col" data-i18n="library.preview">Pregled</th><th scope="col" data-i18n="library.tags">Tagovi</th><th scope="col" data-i18n="library.shortcut">Prečica</th><th scope="col" data-i18n="library.actions">Radnje</th>
+            </tr></thead><tbody>
+            {% for keyword, prompt_data in prompts.items() %}
+                <tr class="prompt-item" data-keyword="{{ keyword }}" data-content="{{ prompt_data.content }}" data-tags="{{ prompt_data.tags|join(',') }}">
+                    <td class="library-table-name"><i class="far fa-file-lines" aria-hidden="true"></i>{{ keyword|replace(':', '')|replace('demo-', '')|replace('-', ' ')|title }}</td>
+                    <td class="library-table-preview">{{ prompt_data.content }}</td>
+                    <td>{% for tag in prompt_data.tags %}<span class="library-tag">{{ tag }}</span>{% endfor %}</td>
+                    <td class="library-keyword">{{ keyword }}</td>
+                    <td>{{ prompt_actions(keyword, prompt_data) }}</td>
+                </tr>
+            {% endfor %}
+            </tbody></table>
+        </div>
+        <p class="library-no-results" id="noResults" data-i18n="library.noResults" hidden>Nema odgovarajućih promptova.</p>
+        {% else %}
+        <div class="empty-state"><h2 data-i18n="empty.title">Nema dodanih promptova</h2><p data-i18n="empty.subtitle">Dodajte svoj prvi prompt da biste počeli koristiti PromptPlus</p><button class="btn btn-accent" data-bs-toggle="modal" data-bs-target="#addPromptModal" data-i18n="empty.addBtn">Dodaj</button></div>
+        {% endif %}
+        </div>
+        </section>
+        </div>
+    </main>
 
     <!-- Import Modal -->
     <div class="modal fade" id="importModal" tabindex="-1">
@@ -305,9 +276,9 @@
                         <h6 class="fw-bold mb-2" data-i18n="settings.shortcutsTitle">Globalne prečice</h6>
                         <div class="d-flex justify-content-between align-items-center mb-1">
                             <span class="small text-muted" data-i18n="settings.quickSearch">Quick Search:</span>
-                            <span><kbd>Ctrl</kbd> + <kbd>Alt</kbd> + <kbd>P</kbd></span>
+                            <button type="button" id="shortcutInput" class="shortcut-recorder" data-shortcut="{{ shortcut }}" aria-label="Change Quick Search shortcut">Ctrl + Alt + P</button>
                         </div>
-                        <div class="form-text mt-1" data-i18n="settings.shortcutsHelp">Ova prečica radi iz bilo koje aplikacije dok je PromptPlus pokrenut.</div>
+                        <div class="form-text mt-1" data-i18n="settings.shortcutsHelp">Ova prečica radi iz bilo koje aplikacije dok je PromptPlus pokrenut. Kliknite na prečicu i pritisnite novu kombinaciju.</div>
                     </div>
                 </div>
                 <div class="modal-footer border-0 pt-0">
@@ -408,6 +379,17 @@
                 "nav.toggleTheme": "Promijeni temu",
                 "search.placeholder": "Pretraži promptove...",
                 "search.addBtn": "Dodaj",
+                "theme.dark": "Tamno",
+                "theme.light": "Svijetlo",
+                "library.title": "Biblioteka promptova",
+                "library.gallery": "Galerija",
+                "library.list": "Lista",
+                "library.name": "Naziv",
+                "library.preview": "Pregled",
+                "library.tags": "Tagovi",
+                "library.shortcut": "Prečica",
+                "library.actions": "Radnje",
+                "library.noResults": "Nema odgovarajućih promptova.",
                 "filters.label": "Filteri:",
                 "filters.all": "Sve",
                 "prompt.editTitle": "Uredi prompt",
@@ -441,7 +423,7 @@
                 "settings.startWithWindowsHelp": "Aplikacija će se automatski pokrenuti minimizirana pri prijavi na Windows.",
                 "settings.shortcutsTitle": "Globalne prečice",
                 "settings.quickSearch": "Quick Search:",
-                "settings.shortcutsHelp": "Ova prečica radi iz bilo koje aplikacije dok je PromptPlus pokrenut.",
+                "settings.shortcutsHelp": "Ova prečica radi iz bilo koje aplikacije dok je PromptPlus pokrenut. Kliknite na prečicu i pritisnite novu kombinaciju.",
                 "settings.close": "Zatvori",
                 "deleteModal.title": "Potvrda brisanja",
                 "deleteModal.prefix": "Da li ste sigurni da želite obrisati prompt ",
@@ -465,6 +447,17 @@
                 "nav.toggleTheme": "Toggle theme",
                 "search.placeholder": "Search prompts...",
                 "search.addBtn": "Add",
+                "theme.dark": "Dark",
+                "theme.light": "Light",
+                "library.title": "Prompt library",
+                "library.gallery": "Gallery",
+                "library.list": "List",
+                "library.name": "Name",
+                "library.preview": "Preview",
+                "library.tags": "Tags",
+                "library.shortcut": "Shortcut",
+                "library.actions": "Actions",
+                "library.noResults": "No matching prompts.",
                 "filters.label": "Filters:",
                 "filters.all": "All",
                 "prompt.editTitle": "Edit prompt",
@@ -498,7 +491,7 @@
                 "settings.startWithWindowsHelp": "The application will start minimized automatically when you log into Windows.",
                 "settings.shortcutsTitle": "Global Shortcuts",
                 "settings.quickSearch": "Quick Search:",
-                "settings.shortcutsHelp": "This shortcut works from any application while PromptPlus is running.",
+                "settings.shortcutsHelp": "This shortcut works from any application while PromptPlus is running. Click the shortcut and press a new combination.",
                 "settings.close": "Close",
                 "deleteModal.title": "Confirm Deletion",
                 "deleteModal.prefix": "Are you sure you want to delete prompt ",
@@ -548,6 +541,10 @@
                     el.title = dict[key];
                 }
             });
+            document.querySelectorAll('.btn-edit-prompt, .btn-delete-confirm').forEach(btn => {
+                const action = btn.classList.contains('btn-edit-prompt') ? 'prompt.editTitle' : 'prompt.deleteTitle';
+                btn.setAttribute('aria-label', `${dict[action]} ${btn.dataset.keyword}`);
+            });
 
             // Update delete modal text prefix/suffix
             const deletePrefix = document.getElementById('deleteConfirmPrefix');
@@ -567,6 +564,8 @@
                     btn.classList.remove('active');
                 }
             });
+            updateThemeLabel();
+            filterPrompts();
 
             // Sync with backend only after an explicit change.
             if (!persist) return;
@@ -614,35 +613,39 @@
 
         // Search and Tag filtering functionality
         function filterPrompts() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const searchTerm = document.getElementById('searchInput').value.trim().toLocaleLowerCase();
             const activeTagEl = document.querySelector('.tag-chip.active');
-            const activeTag = activeTagEl ? activeTagEl.getAttribute('data-tag') : 'all';
+            const activeTag = activeTagEl ? activeTagEl.getAttribute('data-tag').toLocaleLowerCase() : 'all';
             const promptItems = document.querySelectorAll('.prompt-item');
-
+            let visible = 0;
             promptItems.forEach(item => {
-                const keyword = item.getAttribute('data-keyword').toLowerCase();
-                const content = item.getAttribute('data-content').toLowerCase();
-                const tags = item.getAttribute('data-tags').toLowerCase().split(',');
-
-                const matchesSearch = keyword.includes(searchTerm) || content.includes(searchTerm);
-                const matchesTag = activeTag === 'all' || tags.includes(activeTag.toLowerCase());
-
-                if (matchesSearch && matchesTag) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
-                }
+                const keyword = item.dataset.keyword.toLocaleLowerCase();
+                const content = item.dataset.content.toLocaleLowerCase();
+                const tags = item.dataset.tags.toLocaleLowerCase().split(',');
+                const matchesSearch = keyword.includes(searchTerm) || content.includes(searchTerm) || tags.some(tag => tag.includes(searchTerm));
+                item.hidden = !(matchesSearch && (activeTag === 'all' || tags.includes(activeTag)));
+                if (!item.hidden && item.classList.contains('library-card')) visible++;
             });
+            const noResults = document.getElementById('noResults');
+            if (noResults) noResults.hidden = visible !== 0 || promptItems.length === 0;
         }
 
-        document.getElementById('searchInput').addEventListener('input', filterPrompts);
+        function resetPromptScroll() {
+            document.getElementById('promptScroll').scrollTop = 0;
+        }
+        document.getElementById('searchInput').addEventListener('input', () => {
+            filterPrompts();
+            resetPromptScroll();
+        });
 
         // Tag filtering clicks
         document.querySelectorAll('.tag-chip').forEach(chip => {
             chip.addEventListener('click', function () {
                 document.querySelectorAll('.tag-chip').forEach(c => c.classList.remove('active'));
                 this.classList.add('active');
+                document.querySelectorAll('.tag-chip').forEach(c => c.setAttribute('aria-pressed', String(c === this)));
                 filterPrompts();
+                resetPromptScroll();
             });
         });
 
@@ -650,7 +653,27 @@
         document.getElementById('searchClear').addEventListener('click', function () {
             document.getElementById('searchInput').value = '';
             filterPrompts();
+            resetPromptScroll();
+            document.getElementById('searchInput').focus();
         });
+
+        function setView(view) {
+            const isList = view === 'list';
+            const gallery = document.getElementById('promptsContainer');
+            const list = document.getElementById('listPanel');
+            if (gallery && list) { gallery.hidden = isList; list.hidden = !isList; }
+            document.getElementById('galleryView').classList.toggle('active', !isList);
+            document.getElementById('listView').classList.toggle('active', isList);
+            document.getElementById('galleryView').setAttribute('aria-pressed', String(!isList));
+            document.getElementById('listView').setAttribute('aria-pressed', String(isList));
+            localStorage.setItem('promptplus-view', isList ? 'list' : 'gallery');
+            resetPromptScroll();
+        }
+        document.getElementById('galleryView').addEventListener('click', () => setView('gallery'));
+        document.getElementById('listView').addEventListener('click', () => setView('list'));
+        const requestedView = new URLSearchParams(window.location.search).get('view');
+        setView(requestedView === 'list' || requestedView === 'gallery' ? requestedView : (localStorage.getItem('promptplus-view') || 'gallery'));
+        filterPrompts();
 
         // Smart Focus for Modals
         document.querySelectorAll('.modal').forEach(modal => {
@@ -733,6 +756,11 @@
 
         // Theme Toggle
         const themeToggle = document.getElementById('themeToggle');
+        function updateThemeLabel() {
+            const lang = document.documentElement.lang;
+            const nextTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            document.getElementById('themeLabel').textContent = translations[lang][`theme.${nextTheme}`];
+        }
         themeToggle.addEventListener('click', function () {
             const html = document.documentElement;
             const currentTheme = html.getAttribute('data-theme');
@@ -741,6 +769,7 @@
             // Apply locally
             html.setAttribute('data-theme', newTheme);
             localStorage.setItem('promptplus-theme', newTheme);
+            updateThemeLabel();
 
             // Sync with server
             const formData = new FormData();
@@ -767,6 +796,48 @@
                     console.log('Settings updated:', data);
                 })
                 .catch(err => console.error('Error updating settings:', err));
+        });
+
+        const shortcutInput = document.getElementById('shortcutInput');
+        const shortcutKeyNames = {
+            ' ': 'Space', 'Escape': 'Esc', 'ArrowUp': 'Up', 'ArrowDown': 'Down',
+            'ArrowLeft': 'Left', 'ArrowRight': 'Right', 'Delete': 'Delete',
+            'Backspace': 'Backspace', 'Enter': 'Enter', 'Tab': 'Tab'
+        };
+        function shortcutDisplay(accelerator) {
+            return accelerator
+                .replace('CommandOrControl', 'Ctrl')
+                .replace('Control', 'Ctrl')
+                .replace(/\+/g, ' + ');
+        }
+        function setShortcutDisplay(accelerator) {
+            shortcutInput.dataset.shortcut = accelerator;
+            shortcutInput.textContent = shortcutDisplay(accelerator);
+            document.querySelectorAll('.shortcut-display').forEach(element => {
+                if (element !== shortcutInput) element.textContent = shortcutDisplay(accelerator);
+            });
+        }
+        setShortcutDisplay(shortcutInput.dataset.shortcut || 'CommandOrControl+Alt+P');
+        window.promptplus?.setShortcut(shortcutInput.dataset.shortcut);
+        shortcutInput.addEventListener('keydown', function (event) {
+            event.preventDefault();
+            const parts = [];
+            if (event.ctrlKey || event.metaKey) parts.push('CommandOrControl');
+            if (event.altKey) parts.push('Alt');
+            if (event.shiftKey) parts.push('Shift');
+            const key = shortcutKeyNames[event.key] || (event.key.length === 1 ? event.key.toUpperCase() : event.key);
+            if (!parts.length || ['Control', 'Alt', 'Shift', 'Meta'].includes(event.key)) return;
+            parts.push(key);
+            const shortcut = parts.join('+');
+            setShortcutDisplay(shortcut);
+            const formData = new FormData();
+            formData.append('shortcut', shortcut);
+            fetch('/update_shortcut', { method: 'POST', body: formData })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.shortcut) window.promptplus?.setShortcut(data.shortcut);
+                })
+                .catch(err => console.error('Error saving shortcut:', err));
         });
     </script>
 </body>

@@ -130,6 +130,7 @@ async def read_root(request: Request):
         "theme": settings.get("theme", "dark"),
         "language": settings.get("language", "bs"),
         "start_with_windows": settings.get("start_with_windows", False),
+        "shortcut": settings.get("shortcut", "CommandOrControl+Alt+P"),
         "demo_mode": get_prompts_file() == DEMO_FILE,
         "all_tags": sorted(list(set(tag for p in processed_prompts.values() for tag in p.get('tags', [])))),
         "category_color": category_color,
@@ -272,3 +273,13 @@ async def update_settings(start_with_windows: bool = Form(...)):
     set_start_on_boot(start_with_windows)
     
     return {"status": "success", "start_with_windows": start_with_windows}
+
+
+@app.post("/update_shortcut")
+async def update_shortcut(shortcut: str = Form(...)):
+    if not shortcut or len(shortcut) > 100:
+        raise HTTPException(status_code=400, detail="Invalid shortcut")
+    settings = load_settings()
+    settings["shortcut"] = shortcut
+    save_settings(settings)
+    return {"status": "success", "shortcut": shortcut}

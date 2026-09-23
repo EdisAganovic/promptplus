@@ -3,16 +3,14 @@ const path = require('node:path');
 const fs = require('node:fs');
 const { spawn } = require('node:child_process');
 
-const SHORTCUT = 'CommandOrControl+Alt+P';
+const DEFAULT_SHORTCUT = 'CommandOrControl+Alt+P';
+let shortcut = DEFAULT_SHORTCUT;
 let backend;
 let backendReady;
 let mainWindow;
 let searchWindow;
 let tray;
 let quitting = false;
-const iconPath = () => app.isPackaged
-  ? path.join(process.resourcesPath, 'icon.ico')
-  : path.join(app.getAppPath(), 'icon.ico');
 const trayIconPath = () => app.isPackaged
   ? path.join(process.resourcesPath, 'tray.ico')
   : path.join(__dirname, 'tray.ico');
@@ -70,9 +68,12 @@ function startBackend() {
 function createMainWindow(port) {
   mainWindow = new BrowserWindow({
     width: 1200, height: 870, minWidth: 800, minHeight: 600,
-    title: 'PromptPlus', icon: iconPath(),
+    title: 'PromptPlus', icon: trayIconPath(),
     show: false, backgroundColor: '#1a1b27',
-    webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true },
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false, contextIsolation: true, sandbox: true,
+    },
   });
   const allowedOrigin = `http://127.0.0.1:${port}`;
   mainWindow.webContents.on('will-navigate', (event, url) => {
@@ -87,6 +88,17 @@ function createMainWindow(port) {
   });
   mainWindow.loadURL(allowedOrigin);
   if (!process.argv.includes('--minimize')) mainWindow.once('ready-to-show', () => mainWindow.show());
+}
+
+function registerShortcut(nextShortcut) {
+  if (typeof nextShortcut !== 'string' || !nextShortcut.trim()) return false;
+  globalShortcut.unregister(shortcut);
+  if (!globalShortcut.register(nextShortcut, showSearch)) {
+    globalShortcut.register(shortcut, showSearch);
+    return false;
+  }
+  shortcut = nextShortcut;
+  return true;
 }
 
 function createSearchWindow() {
@@ -144,6 +156,10 @@ ipcMain.handle('paste-prompt', (event, keyword) => {
 ipcMain.on('close-search', event => {
   if (event.sender === searchWindow?.webContents) searchWindow.hide();
 });
+ipcMain.handle('set-shortcut', (event, nextShortcut) => {
+  if (event.sender !== mainWindow?.webContents) return false;
+  return registerShortcut(nextShortcut);
+});
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -151,14 +167,15 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => { if (mainWindow) { mainWindow.show(); mainWindow.focus(); } });
   app.whenReady().then(async () => {
     try {
+      app.setAppUserModelId('com.promptplus.desktop');
       // Keep the tray context menu, but remove Electron's default window menu.
       Menu.setApplicationMenu(null);
       const ready = await startBackend();
       createMainWindow(ready.port);
       createSearchWindow();
       createTray();
-      if (!globalShortcut.register(SHORTCUT, showSearch)) {
-        console.warn(`${SHORTCUT} is already in use; Quick Search remains available from the tray.`);
+      if (!globalShortcut.register(shortcut, showSearch)) {
+        console.warn(`${shortcut} is already in use; Quick Search remains available from the tray.`);
       }
     } catch (error) {
       dialog.showErrorBox('PromptPlus startup failed', String(error));

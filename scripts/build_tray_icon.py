@@ -1,4 +1,4 @@
-"""Rasterize the shapes in electron/icon.svg into a multi-size Windows tray icon."""
+"""Rasterize the lightning artwork into matching app and tray icons."""
 
 from pathlib import Path
 
@@ -6,7 +6,7 @@ from PIL import Image, ImageDraw
 
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "electron" / "tray.ico"
+OUTPUTS = (ROOT / "electron" / "tray.ico", ROOT / "icon.ico")
 SIZES = (16, 20, 24, 32, 48, 64, 128, 256)
 SCALE = 4
 
@@ -28,5 +28,6 @@ def render(size):
 
 if __name__ == "__main__":
     images = [render(size) for size in SIZES]
-    images[-1].save(OUTPUT, format="ICO", append_images=images[:-1], sizes=[(size, size) for size in SIZES])
-    print(OUTPUT)
+    for output in OUTPUTS:
+        images[-1].save(output, format="ICO", append_images=images[:-1], sizes=[(size, size) for size in SIZES])
+        print(output)

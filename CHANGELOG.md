@@ -2,7 +2,7 @@
 
 All notable changes to PromptPlus will be documented in this file.
 
-## [Unreleased] - Electron desktop migration
+## [0.6.0] - 2026-09-23
 
 ### Changed
 - Replaced the PyQt desktop window and Quick Search with Electron windows and a system tray.
@@ -16,10 +16,10 @@ All notable changes to PromptPlus will be documented in this file.
 - Matched the Windows system-tray icon to the green lightning Electron artwork.
 - Color-coded categories consistently in filters and cards, with 20% smaller card text to show more prompt content.
 - Matched the shortcut label and card edge to each category and refreshed the dashboard with calmer, Notion-inspired surfaces and controls.
-
-## [Unreleased] - 2026-09-23
-
-### Changed
+- Added Bosnian/English language switching and compact Gallery/List views with neutral light and dark themes.
+- Kept categories, search, and view controls fixed while prompt results scroll independently.
+- Reduced the library header to its title and aligned the Windows EXE, installer, tray, and favicon with the lightning icon.
+- Moved Add Prompt into the library header and removed prompt-count labels from the library view.
 - Windows builds now clear PyInstaller's cache and leave native DLLs uncompressed to reduce packaging-related startup failures.
 - Prompt saves and imports now replace the JSON file atomically, so the text replacer does not read a partially written file.
 - Quick Search uses `Ctrl+Alt+P` in both launchers. The shortcut no longer suppresses physical key events and triggers when the final shortcut key is released.

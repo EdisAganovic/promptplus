@@ -130,5 +130,8 @@ Thumbs.db
 # Output directories
 dist/
 build/
+!build/
+build/*
+!build/installer.nsh
 dist-electron/
 node_modules/

@@ -17,7 +17,7 @@ import time
 import tempfile
 
 # App Version - Change this in one place
-VERSION = "0.5"
+VERSION = "0.6.0"
 
 # Threading lock for file operations within the same process
 file_lock = threading.Lock()
@@ -126,7 +126,12 @@ def load_settings():
         except Exception as e:
             print(f"Error loading settings: {e}")
             # If corrupted, we return defaults rather than crashing
-    return {"theme": "dark", "start_with_windows": False, "language": "bs"} # Default settings
+    return {
+        "theme": "dark",
+        "start_with_windows": False,
+        "language": "bs",
+        "shortcut": "CommandOrControl+Alt+P",
+    } # Default settings
 
 
 def save_settings(settings):
