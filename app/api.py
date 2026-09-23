@@ -162,13 +162,21 @@ async def import_prompts(file: UploadFile = File(...)):
         content = await file.read()
         # Validate JSON first
         try:
-            json.loads(content)
+            imported = json.loads(content)
         except json.JSONDecodeError as e:
             logger.error(f"Invalid JSON in import: {e}")
             return HTMLResponse(content=f"Invalid JSON file: {str(e)}", status_code=400)
+
+        if not isinstance(imported, dict):
+            return HTMLResponse(content="Invalid JSON file: the root value must be an object.", status_code=400)
+        for keyword, value in imported.items():
+            if not isinstance(keyword, str) or not isinstance(value, (str, dict)):
+                return HTMLResponse(content="Invalid prompt format.", status_code=400)
+            if isinstance(value, dict) and not isinstance(value.get('content'), str):
+                return HTMLResponse(content="Invalid prompt content.", status_code=400)
         
-        with open(PROMPTS_FILE, "wb") as f:
-            f.write(content)
+        # Reuse the locked atomic writer used by normal prompt edits.
+        save_prompts(imported)
     except Exception as e:
         logger.error(f"Error importing prompts: {e}")
         logger.error(traceback.format_exc())

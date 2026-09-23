@@ -20,6 +20,7 @@ os.environ["QT_LOGGING_RULES"] = "qt.qpa.window=false"
 # Global references for cleanup
 _replacer_thread = None
 _quick_search_window = None
+_hotkey_handle = None
 
 class QuickSearchManager(QObject):
     """Bridge for safely triggering UI actions from background threads to the main GUI thread."""
@@ -79,8 +80,12 @@ if __name__ == "__main__":
             print(f"WARNING: Global hotkey 'ctrl+alt+p' could not be registered. Error: {e}")
     else:
         try:
-            # Use suppress=True to prevent the 'p' from being typed into the search box
-            keyboard.add_hotkey('ctrl+alt+p', trigger_manager.show_search.emit, suppress=True)
+            # Leave physical key events untouched. The callback runs when the
+            # shortcut's final key is released; modifiers may still be held.
+            _hotkey_handle = keyboard.add_hotkey(
+                'ctrl+alt+p', trigger_manager.show_search.emit,
+                suppress=False, trigger_on_release=True
+            )
         except Exception as e:
             print(f"WARNING: Global hotkey 'ctrl+alt+p' could not be registered. Error: {e}")
 
@@ -107,7 +112,11 @@ if __name__ == "__main__":
             if _pynput_hotkey_listener:
                 _pynput_hotkey_listener.stop()
         else:
-            keyboard.unhook_all()
+            if _hotkey_handle is not None:
+                try:
+                    keyboard.remove_hotkey(_hotkey_handle)
+                except Exception as e:
+                    print(f"WARNING: Could not unregister global hotkey: {e}")
 
     app.aboutToQuit.connect(cleanup)
 

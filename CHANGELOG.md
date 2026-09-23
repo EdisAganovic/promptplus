@@ -2,11 +2,24 @@
 
 All notable changes to PromptPlus will be documented in this file.
 
+## [Unreleased] - 2026-09-23
+
+### Changed
+- Prompt saves and imports now replace the JSON file atomically, so the text replacer does not read a partially written file.
+- Quick Search uses `Ctrl+Alt+P` in both launchers. The shortcut no longer suppresses physical key events and triggers when the final shortcut key is released.
+- Keyboard callbacks open Quick Search on the Qt UI thread. Shutdown removes only PromptPlus's own keyboard registrations.
+
+### Fixed
+- Imports reject JSON that is not a prompt object or contains invalid prompt content.
+- Deleting or replacing the prompt file updates the text replacer's in-memory prompts.
+- Paste cleanup no longer sends key-release events for keys the user may be holding.
+- macOS paste cleanup no longer references an undefined key list.
+
 ## [0.5] - 2026-05-02
 
 ### Added
 - **Thread-Safe UI Bridge** - Implemented `QuickSearchManager` using `pyqtSignal` to safely trigger UI actions from background threads, eliminating potential crashes during global hotkey activation.
-- **Enhanced Quick Search** - Added `suppress=True` to the `Ctrl+Alt+P` hotkey to prevent trigger characters from leaking into the active application.
+- **Enhanced Quick Search** - Added the `Ctrl+Alt+P` global shortcut.
 - **Improved Focus Management** - Added micro-delays using `QTimer` to ensure the Quick Search input field consistently gains focus after the window appears.
 - **Suppress Qt Logging** - Disabled redundant QPA console warnings for a cleaner terminal output.
 
@@ -14,7 +27,7 @@ All notable changes to PromptPlus will be documented in this file.
 - **Parallel Startup Optimization** - Refactored `main.py` to initialize the text replacer thread and GUI window in parallel, significantly reducing perceived startup time.
 - **O(1) Trigger Lookups** - Optimized the replacement engine with a keyword length cache and hash map matching, drastically reducing CPU usage during typing.
 - **Robust Path Handling** - Improved `utils.py` to correctly handle data storage in `AppData/Local` when running as a compiled executable, ensuring persistence across updates.
-- **Enhanced Paste Reliability** - Added explicit `keyUp` safety releases for modifier keys (Ctrl, Alt, Shift) to prevent "stuck keys" after a replacement.
+- **Enhanced Paste Reliability** - Improved clipboard timing around prompt insertion.
 - **Performance Polishing** - Throttled file modification checks to once every 2 seconds to minimize disk I/O.
 
 ### Fixed

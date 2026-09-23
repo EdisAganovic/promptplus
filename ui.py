@@ -5,6 +5,7 @@ Entry point for the application.
 import sys
 import os
 from PyQt6.QtWidgets import QApplication
+from PyQt6.QtCore import QObject, pyqtSignal, Qt
 
 from app.utils import check_existing_instances
 from app.replacer import RealtimeTextReplacer, ReplacerThread, QuickSearchWindow
@@ -15,7 +16,12 @@ import threading
 # Global reference for cleanup
 _replacer_thread = None
 _quick_search_window = None
-_hotkey_thread = None
+_hotkey_handle = None
+
+
+class QuickSearchSignalBridge(QObject):
+    """Move global keyboard callbacks onto Qt's GUI thread safely."""
+    triggered = pyqtSignal()
 
 
 def show_quick_search(replacer):
@@ -30,10 +36,15 @@ def show_quick_search(replacer):
     _quick_search_window.activateWindow()
 
 
-def setup_global_hotkey(replacer):
+def setup_global_hotkey(bridge):
     """Setup global hotkey for quick search."""
-    # Register the global hotkey
-    keyboard.add_hotkey('ctrl+shift+p', lambda: show_quick_search(replacer))
+    global _hotkey_handle
+    # Leave physical key events untouched. The callback runs when the
+    # shortcut's final key is released; modifiers may still be held.
+    _hotkey_handle = keyboard.add_hotkey(
+        'ctrl+alt+p', bridge.triggered.emit,
+        suppress=False, trigger_on_release=True
+    )
 
 
 def main():
@@ -55,9 +66,9 @@ def main():
     _replacer_thread = ReplacerThread(replacer)
     _replacer_thread.start()
 
-    # Setup global hotkey in a separate thread
-    _hotkey_thread = threading.Thread(target=setup_global_hotkey, args=(replacer,), daemon=True)
-    _hotkey_thread.start()
+    bridge = QuickSearchSignalBridge()
+    bridge.triggered.connect(lambda: show_quick_search(replacer), Qt.ConnectionType.QueuedConnection)
+    setup_global_hotkey(bridge)
 
     window = FastAPIWebBrowser()
     window.show()
@@ -72,7 +83,11 @@ def main():
             _replacer_thread.stop()
             _replacer_thread.wait(2000)
         # Unregister hotkeys
-        keyboard.unhook_all()
+        if _hotkey_handle is not None:
+            try:
+                keyboard.remove_hotkey(_hotkey_handle)
+            except Exception as e:
+                print(f"WARNING: Could not unregister global hotkey: {e}")
 
     qt_app.aboutToQuit.connect(cleanup)
 

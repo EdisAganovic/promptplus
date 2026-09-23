@@ -41,11 +41,9 @@ if sys.platform == 'darwin':
         pass
     from pynput import keyboard as _pynput_kb
     _PASTE_KEY = 'command'
-    _PASTE_RELEASE_KEYS = ['command', 'shift', 'alt', 'v']
 else:
     import keyboard
     _PASTE_KEY = 'ctrl'
-    _PASTE_RELEASE_KEYS = ['ctrl', 'shift', 'alt', 'v']
 from PyQt6.QtCore import QThread, QTimer, Qt
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, 
                              QHBoxLayout, QLineEdit, QListWidget, 
@@ -65,6 +63,7 @@ class RealtimeTextReplacer:
         self.lock = threading.RLock()
         self.last_file_mod_time = self._get_file_mod_time()
         self._running = True
+        self._keyboard_hook = None
         # OPTIMIZATION: Cache set of keyword lengths and the prompts dictionary for O(1) lookups
         self._keyword_lengths_cache = set()
         self._prompts_cache = {}
@@ -75,6 +74,8 @@ class RealtimeTextReplacer:
             try:
                 with open(PROMPTS_FILE, 'r', encoding='utf-8') as f:
                     data = json.load(f)
+                    if not isinstance(data, dict):
+                        return {}
                     prompts = {}
                     for key, value in data.items():
                         if isinstance(value, dict) and 'content' in value:
@@ -82,7 +83,7 @@ class RealtimeTextReplacer:
                         else:
                             prompts[key] = value
                     return prompts
-            except (json.JSONDecodeError, IOError):
+            except (json.JSONDecodeError, IOError, TypeError):
                 return {}
         return {}
 
@@ -93,7 +94,7 @@ class RealtimeTextReplacer:
 
     def reload_prompts_if_needed(self):
         current_file_mod_time = self._get_file_mod_time()
-        if current_file_mod_time and current_file_mod_time != self.last_file_mod_time:
+        if current_file_mod_time != self.last_file_mod_time:
             new_prompts = self._load_prompts_for_replacer()
             if new_prompts != self.prompts:
                 with self.lock:
@@ -208,10 +209,6 @@ class RealtimeTextReplacer:
             except Exception as e:
                 print(f"Error during replacement paste: {e}")
             finally:
-                # Safety releases: prevent PyAutoGUI from leaving modifiers down
-                for key in _PASTE_RELEASE_KEYS:
-                    pyautogui.keyUp(key)
-
                 # Slight delay to ensure Ctrl+V completes before restoring old clipboard
                 time.sleep(0.05)
                 try:
@@ -275,7 +272,10 @@ class RealtimeTextReplacer:
                 return
         else:
             try:
-                keyboard.hook(self.on_key_event)
+                with self.lock:
+                    if not self._running:
+                        return
+                    self._keyboard_hook = keyboard.hook(self.on_key_event)
             except Exception as e:
                 print(f"CRITICAL: Failed to hook keyboard. Text replacement will not work. Error: {e}")
                 self._running = False
@@ -284,12 +284,16 @@ class RealtimeTextReplacer:
         self._run_loop()
 
     def stop_monitoring(self):
-        self._running = False
+        with self.lock:
+            self._running = False
+            hook = self._keyboard_hook
+            self._keyboard_hook = None
         if sys.platform == 'darwin':
             if hasattr(self, '_pynput_listener'):
                 self._pynput_listener.stop()
         else:
-            keyboard.unhook_all()
+            if hook is not None:
+                keyboard.unhook(hook)
 
 
 class ReplacerThread(QThread):
@@ -559,10 +563,6 @@ class QuickSearchWindow(QMainWindow):
         except Exception as e:
             print(f"Error during paste: {e}")
         finally:
-            # explicitly release keys just in case pyautogui leaves them down
-            for key in _PASTE_RELEASE_KEYS:
-                pyautogui.keyUp(key)
-                
             # Wait 200ms before restoring original clipboard to ensure paste completed
             QTimer.singleShot(200, lambda: self._restore_clipboard_and_close(original_clipboard))
             

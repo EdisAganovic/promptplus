@@ -14,6 +14,7 @@ import psutil
 from datetime import datetime
 import threading
 import time
+import tempfile
 
 # App Version - Change this in one place
 VERSION = "0.5"
@@ -90,17 +91,19 @@ def load_prompts():
 
 def save_prompts(prompts):
     with file_lock:
-        # Retry logic for Windows file locking
-        max_retries = 3
-        for i in range(max_retries):
-            try:
-                with open(PROMPTS_FILE, 'w', encoding='utf-8') as f:
-                    json.dump(prompts, f, ensure_ascii=False, indent=2)
-                break
-            except PermissionError:
-                if i == max_retries - 1:
-                    raise
-                time.sleep(0.05)
+        # Write beside the destination and replace it atomically. Readers can
+        # then only observe the old complete file or the new complete file.
+        directory = os.path.dirname(PROMPTS_FILE) or "."
+        fd, temp_path = tempfile.mkstemp(prefix=".prompts-", suffix=".tmp", dir=directory)
+        try:
+            with os.fdopen(fd, 'w', encoding='utf-8') as f:
+                json.dump(prompts, f, ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(temp_path, PROMPTS_FILE)
+        finally:
+            if os.path.exists(temp_path):
+                os.unlink(temp_path)
 
 
 def load_settings():
