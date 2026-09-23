@@ -20,7 +20,6 @@
     "files": ["electron/**/*", "package.json", "icon.ico"],
     "extraResources": [
       { "from": "dist/PromptPlusBackend", "to": "backend", "filter": ["**/*"] },
-      { "from": "demo.json", "to": "backend/demo.json" },
       { "from": "electron/tray.ico", "to": "tray.ico" },
       { "from": "icon.ico", "to": "icon.ico" }
     ],

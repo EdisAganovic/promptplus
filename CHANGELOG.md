@@ -24,6 +24,10 @@ All notable changes to PromptPlus will be documented in this file.
 - Prompt saves and imports now replace the JSON file atomically, so the text replacer does not read a partially written file.
 - Quick Search uses `Ctrl+Alt+P` in both launchers. The shortcut no longer suppresses physical key events and triggers when the final shortcut key is released.
 - Keyboard callbacks open Quick Search on the Qt UI thread. Shutdown removes only PromptPlus's own keyboard registrations.
+- Added a configurable Quick Search shortcut in Settings, with the current shortcut reflected throughout the library UI.
+- Added a one-time notification explaining that minimizing PromptPlus keeps it running in the system tray.
+- Renamed the library category label to Tags and refreshed the dark theme with the Blue Mist blue/teal background.
+- Changed the Windows installer to an assisted, version-labeled setup with an optional desktop shortcut and PromptPlus icon.
 
 ### Fixed
 - Imports reject JSON that is not a prompt object or contains invalid prompt content.

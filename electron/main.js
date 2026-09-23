@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, globalShortcut, ipcMain, shell, dialog } = require('electron');
+const { app, BrowserWindow, Tray, Menu, Notification, globalShortcut, ipcMain, shell, dialog } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs');
 const { spawn } = require('node:child_process');
@@ -11,6 +11,8 @@ let mainWindow;
 let searchWindow;
 let tray;
 let quitting = false;
+let hasShownMinimizeNotice = false;
+const minimizeNoticePath = () => path.join(app.getPath('userData'), 'minimize-notice.json');
 const trayIconPath = () => app.isPackaged
   ? path.join(process.resourcesPath, 'tray.ico')
   : path.join(__dirname, 'tray.ico');
@@ -85,6 +87,20 @@ function createMainWindow(port) {
   });
   mainWindow.on('close', event => {
     if (!quitting) { event.preventDefault(); mainWindow.hide(); }
+  });
+  mainWindow.on('minimize', () => {
+    if (hasShownMinimizeNotice) return;
+    hasShownMinimizeNotice = true;
+    try {
+      fs.writeFileSync(minimizeNoticePath(), JSON.stringify({ shown: true }));
+    } catch (error) {
+      console.warn(`Could not persist minimize notice state: ${error.message}`);
+    }
+    new Notification({
+      title: 'PromptPlus is still running',
+      body: 'PromptPlus was minimized to the system tray. Open it again from the tray icon.',
+      icon: trayIconPath(),
+    }).show();
   });
   mainWindow.loadURL(allowedOrigin);
   if (!process.argv.includes('--minimize')) mainWindow.once('ready-to-show', () => mainWindow.show());
@@ -168,6 +184,7 @@ if (!app.requestSingleInstanceLock()) {
   app.whenReady().then(async () => {
     try {
       app.setAppUserModelId('com.promptplus.desktop');
+      hasShownMinimizeNotice = fs.existsSync(minimizeNoticePath());
       // Keep the tray context menu, but remove Electron's default window menu.
       Menu.setApplicationMenu(null);
       const ready = await startBackend();

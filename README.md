@@ -41,4 +41,4 @@ In a packaged build, prompts and settings are stored in `%LOCALAPPDATA%\PromptPl
 
 ## Demo mode
 
-When `demo.json` is present beside the Python backend (`backend.py` during development or `PromptPlusBackend.exe` in the installed app), it temporarily replaces the active prompt set. The dashboard, Quick Search, keyword replacement, import/export, and edits use `demo.json`; personal `prompts.json` is not changed. Remove or rename `demo.json` and restart the app to return to personal prompts. The installer includes the demo file for testing.
+When `demo.json` is present beside the Python backend (`backend.py` during development or `PromptPlusBackend.exe` in the installed app), it temporarily replaces the active prompt set. The dashboard, Quick Search, keyword replacement, import/export, and edits use `demo.json`; personal `prompts.json` is not changed. Remove or rename `demo.json` and restart the app to return to personal prompts. The release installer does not include the demo file.
