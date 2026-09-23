@@ -52,7 +52,13 @@ else:
     data_dir = app_dir
 
 PROMPTS_FILE = os.path.join(data_dir, "prompts.json")
+DEMO_FILE = os.path.join(app_dir, "demo.json")
 SETTINGS_FILE = os.path.join(data_dir, "settings.json")
+
+
+def get_prompts_file():
+    """Temporarily use the demo set while its file exists."""
+    return DEMO_FILE if os.path.isfile(DEMO_FILE) else PROMPTS_FILE
 
 
 def get_current_date():
@@ -61,9 +67,10 @@ def get_current_date():
 
 def load_prompts():
     with file_lock:
-        if os.path.exists(PROMPTS_FILE):
+        prompt_file = get_prompts_file()
+        if os.path.exists(prompt_file):
             try:
-                with open(PROMPTS_FILE, 'r', encoding='utf-8') as f:
+                with open(prompt_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
                     prompts = {}
                     for key, value in data.items():
@@ -93,16 +100,17 @@ def load_prompts():
 
 def save_prompts(prompts):
     with file_lock:
+        prompt_file = get_prompts_file()
         # Write beside the destination and replace it atomically. Readers can
         # then only observe the old complete file or the new complete file.
-        directory = os.path.dirname(PROMPTS_FILE) or "."
+        directory = os.path.dirname(prompt_file) or "."
         fd, temp_path = tempfile.mkstemp(prefix=".prompts-", suffix=".tmp", dir=directory)
         try:
             with os.fdopen(fd, 'w', encoding='utf-8') as f:
                 json.dump(prompts, f, ensure_ascii=False, indent=2)
                 f.flush()
                 os.fsync(f.fileno())
-            os.replace(temp_path, PROMPTS_FILE)
+            os.replace(temp_path, prompt_file)
         finally:
             if os.path.exists(temp_path):
                 os.unlink(temp_path)

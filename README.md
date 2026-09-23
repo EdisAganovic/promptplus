@@ -9,6 +9,7 @@ PromptPlus replaces typed keywords with saved prompts in other applications. Ele
 - Press `Ctrl+Alt+P` on Windows/Linux (or `Command+Alt+P` on macOS) for Quick Search. Choose a prompt to paste it into the previously focused application.
 - Close the dashboard to keep PromptPlus in the system tray. The tray menu can reopen it or quit.
 - Prompt changes are saved atomically in `prompts.json`.
+- Optional `demo.json` provides 150 sample prompts in 15 categories for testing.
 
 The global shortcut is registered through the operating system. If another application owns it, PromptPlus leaves that shortcut alone and Quick Search remains available in the tray menu.
 
@@ -34,6 +35,10 @@ uv pip install --python .venv\Scripts\python.exe pyinstaller
 .venv\Scripts\python.exe build.py
 ```
 
-The result is one installer file: `dist-electron/PromptPlus-Setup-0.5.0.exe`. Run it to install the Electron application and its bundled Python backend. The older `dist/PromptPlus` folder, if present, is a Qt build and is not the Electron application.
+The result is one installer file: `dist-electron/PromptPlus-Setup-0.5.0.exe`. Run it to install the Electron application and its bundled Python backend. The build script removes temporary Electron output after a successful build. The older `dist/PromptPlus` folder, if present, is a Qt build and is not the Electron application.
 
 In a packaged build, prompts and settings are stored in `%LOCALAPPDATA%\PromptPlus`. Development uses the project directory. The app requires permission to monitor keyboard input and simulate paste events.
+
+## Demo mode
+
+When `demo.json` is present beside the Python backend (`backend.py` during development or `PromptPlusBackend.exe` in the installed app), it temporarily replaces the active prompt set. The dashboard, Quick Search, keyword replacement, import/export, and edits use `demo.json`; personal `prompts.json` is not changed. Remove or rename `demo.json` and restart the app to return to personal prompts. The installer includes the demo file for testing.

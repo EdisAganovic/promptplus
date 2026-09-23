@@ -148,6 +148,8 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => { if (mainWindow) { mainWindow.show(); mainWindow.focus(); } });
   app.whenReady().then(async () => {
     try {
+      // Keep the tray context menu, but remove Electron's default window menu.
+      Menu.setApplicationMenu(null);
       const ready = await startBackend();
       createMainWindow(ready.port);
       createSearchWindow();

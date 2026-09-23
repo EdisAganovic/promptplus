@@ -10,6 +10,8 @@ All notable changes to PromptPlus will be documented in this file.
 - Registered Quick Search through Electron's native global shortcut API, which reports shortcut collisions.
 - Windows builds now package a Qt-free Python backend inside the Electron application.
 - Windows distribution is a single installer EXE containing Electron and the Python backend.
+- Reduced installer size by packaging only the English Electron locale and removed duplicate backend staging and temporary release files.
+- Added an optional 150-prompt demo set across 15 categories; when `demo.json` is present it temporarily replaces personal prompts without modifying `prompts.json`.
 
 ## [Unreleased] - 2026-09-23
 

@@ -21,7 +21,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-from .utils import load_prompts, save_prompts, get_current_date, count_tokens, load_settings, save_settings, VERSION
+from .utils import load_prompts, save_prompts, get_prompts_file, DEMO_FILE, get_current_date, count_tokens, load_settings, save_settings, VERSION
 
 app = FastAPI()
 
@@ -97,6 +97,7 @@ async def read_root(request: Request):
         "count_tokens": count_tokens,
         "theme": settings.get("theme", "dark"),
         "start_with_windows": settings.get("start_with_windows", False),
+        "demo_mode": get_prompts_file() == DEMO_FILE,
         "all_tags": sorted(list(set(tag for p in processed_prompts.values() for tag in p.get('tags', [])))),
         "version": VERSION
     })
@@ -160,15 +161,14 @@ async def update_prompt(old_keyword: str, keyword: str = Form(...), content: str
 
 @app.get("/export")
 async def export_prompts():
-    from .utils import PROMPTS_FILE
-    if os.path.exists(PROMPTS_FILE):
-        return FileResponse(PROMPTS_FILE, media_type='application/json', filename="promptovi.json")
+    prompt_file = get_prompts_file()
+    if os.path.exists(prompt_file):
+        return FileResponse(prompt_file, media_type='application/json', filename=os.path.basename(prompt_file))
     return {"error": "File not found"}
 
 
 @app.post("/import")
 async def import_prompts(file: UploadFile = File(...)):
-    from .utils import PROMPTS_FILE
     try:
         content = await file.read()
         # Validate JSON first

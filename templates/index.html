@@ -60,6 +60,11 @@
     </nav>
 
     <div class="container flex-grow-1 py-4">
+        {% if demo_mode %}
+        <div class="alert alert-info" role="status">
+            Demo mode: showing prompts from demo.json. Your personal prompts.json is unchanged.
+        </div>
+        {% endif %}
         <div class="row">
             <!-- Main Content -->
             <div class="col-12">

@@ -1,7 +1,7 @@
 """Build the Python backend and package it with the Electron Windows app."""
 
-import os
 import json
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -40,14 +40,19 @@ backend_output = ROOT / "dist" / "PromptPlusBackend"
 if not (backend_output / "PromptPlusBackend.exe").is_file():
     raise SystemExit("Python backend build did not produce an executable.")
 
-# electron-builder copies this exact directory to resources/backend.
-desktop_backend = ROOT / "dist" / "backend"
-if desktop_backend.exists():
-    import shutil
-
-    shutil.rmtree(desktop_backend)
-import shutil
-
-shutil.copytree(backend_output, desktop_backend)
+# electron-builder copies this directory to resources/backend.
 subprocess.run(["npm.cmd", "run", "dist:win"], cwd=ROOT, check=True)
-print(f"Installer executable: {ROOT / 'dist-electron' / f'PromptPlus-Setup-{VERSION}.exe'}")
+output = ROOT / "dist-electron"
+installer = output / f"PromptPlus-Setup-{VERSION}.exe"
+if not installer.is_file():
+    raise SystemExit("Electron build did not produce an installer.")
+
+# Keep the release directory focused on the one distributable file.
+for filename in ("builder-debug.yml", "latest.yml", f"{installer.name}.blockmap"):
+    (output / filename).unlink(missing_ok=True)
+for dirname in (".icon-ico", "win-unpacked"):
+    temporary_dir = output / dirname
+    if temporary_dir.is_dir():
+        shutil.rmtree(temporary_dir)
+
+print(f"Installer executable: {installer}")

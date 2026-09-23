@@ -9,7 +9,7 @@ import time
 import pyautogui
 import pyperclip
 
-from .utils import PROMPTS_FILE
+from .utils import get_prompts_file
 
 if sys.platform == "darwin":
     # pynput's macOS backend still expects this symbol on some PyObjC versions.
@@ -51,7 +51,7 @@ class RealtimeTextReplacer:
 
     def _load_prompts(self):
         try:
-            with open(PROMPTS_FILE, encoding="utf-8") as handle:
+            with open(get_prompts_file(), encoding="utf-8") as handle:
                 data = json.load(handle)
             if not isinstance(data, dict):
                 return {}
@@ -66,10 +66,11 @@ class RealtimeTextReplacer:
             return {}
 
     def _get_file_mod_time(self):
+        prompt_file = get_prompts_file()
         try:
-            return os.stat(PROMPTS_FILE).st_mtime_ns
+            return prompt_file, os.stat(prompt_file).st_mtime_ns
         except OSError:
-            return None
+            return prompt_file, None
 
     def reload_prompts_if_needed(self):
         modified = self._get_file_mod_time()

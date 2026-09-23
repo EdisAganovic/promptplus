@@ -15,10 +15,12 @@
   "build": {
     "appId": "com.promptplus.desktop",
     "productName": "PromptPlus",
+    "electronLanguages": ["en-US"],
     "directories": { "output": "dist-electron" },
     "files": ["electron/**/*", "package.json", "icon.ico"],
     "extraResources": [
-      { "from": "dist/backend", "to": "backend", "filter": ["**/*"] },
+      { "from": "dist/PromptPlusBackend", "to": "backend", "filter": ["**/*"] },
+      { "from": "demo.json", "to": "backend/demo.json" },
       { "from": "icon.ico", "to": "icon.ico" }
     ],
     "win": { "target": "nsis", "icon": "electron/icon.svg", "signAndEditExecutable": false },
