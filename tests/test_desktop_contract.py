@@ -31,7 +31,7 @@ class DesktopContractTests(unittest.TestCase):
         rows = asyncio.run(quick_search_prompts(request_with_token("test-token")))
         self.assertIsInstance(rows, list)
         for row in rows:
-            self.assertEqual(set(row), {"keyword", "content"})
+            self.assertTrue({"keyword", "content", "id"}.issubset(set(row)))
             self.assertIsInstance(row["keyword"], str)
             self.assertIsInstance(row["content"], str)
 

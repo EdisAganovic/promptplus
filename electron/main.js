@@ -60,6 +60,8 @@ function startBackend() {
             backendReady = message;
             clearTimeout(timer);
             resolve(message);
+          } else if (message.event === 'show_picker' && typeof message.keyword === 'string' && Array.isArray(message.prompts)) {
+            showPicker(message.keyword, message.prompts);
           }
         } catch { if (line) console.log(`[backend] ${line}`); }
       }
@@ -119,7 +121,7 @@ function registerShortcut(nextShortcut) {
 
 function createSearchWindow() {
   searchWindow = new BrowserWindow({
-    width: 520, height: 400, resizable: false, frame: false,
+    width: 540, height: 420, resizable: false, frame: false,
     alwaysOnTop: true, skipTaskbar: true, show: false,
     backgroundColor: '#1a1b27',
     webPreferences: {
@@ -142,6 +144,14 @@ function showSearch() {
   searchWindow.webContents.send('reset-search');
 }
 
+function showPicker(keyword, prompts) {
+  if (!searchWindow) return;
+  searchWindow.center();
+  searchWindow.show();
+  searchWindow.focus();
+  searchWindow.webContents.send('show-picker', { keyword, prompts });
+}
+
 function createTray() {
   tray = new Tray(trayIconPath());
   tray.setToolTip('PromptPlus');
@@ -162,11 +172,18 @@ ipcMain.handle('list-prompts', async event => {
   if (!response.ok) throw new Error(`Prompt list failed: ${response.status}`);
   return response.json();
 });
-ipcMain.handle('paste-prompt', (event, keyword) => {
-  if (event.sender !== searchWindow?.webContents || typeof keyword !== 'string') return false;
+ipcMain.handle('paste-prompt', (event, item) => {
+  if (event.sender !== searchWindow?.webContents) return false;
   searchWindow.hide();
+  const payload = typeof item === 'object' && item !== null
+    ? item
+    : (typeof item === 'string' ? { content: item } : {});
   // Give the previous application time to regain focus before pasting.
-  setTimeout(() => backend?.stdin.writable && backend.stdin.write(JSON.stringify({ type: 'paste', keyword }) + '\n'), 250);
+  setTimeout(() => {
+    if (backend?.stdin.writable) {
+      backend.stdin.write(JSON.stringify({ type: 'paste_content', ...payload }) + '\n');
+    }
+  }, 250);
   return true;
 });
 ipcMain.on('close-search', event => {

@@ -61,15 +61,51 @@ def category_color(tag: str) -> str:
     return palette[index]
 
 
+def _normalize_prompts(prompts_raw):
+    if isinstance(prompts_raw, list):
+        result = []
+        for idx, item in enumerate(prompts_raw):
+            if isinstance(item, dict):
+                result.append({
+                    'id': str(item.get('id') or f"p_{idx + 1}"),
+                    'keyword': item.get('keyword', ''),
+                    'content': item.get('content', ''),
+                    'last_updated': item.get('last_updated', get_current_date()),
+                    'tags': item.get('tags', []) if isinstance(item.get('tags'), list) else []
+                })
+        return result
+    elif isinstance(prompts_raw, dict):
+        result = []
+        for idx, (k, v) in enumerate(prompts_raw.items()):
+            if isinstance(v, dict):
+                result.append({
+                    'id': str(v.get('id') or f"p_{idx + 1}"),
+                    'keyword': k,
+                    'content': v.get('content', ''),
+                    'last_updated': v.get('last_updated', get_current_date()),
+                    'tags': v.get('tags', []) if isinstance(v.get('tags'), list) else []
+                })
+            else:
+                result.append({
+                    'id': f"p_{idx + 1}",
+                    'keyword': k,
+                    'content': str(v),
+                    'last_updated': get_current_date(),
+                    'tags': []
+                })
+        return result
+    return []
+
+
 @app.get("/api/prompts")
 async def quick_search_prompts(request: Request):
-    """Contract: Electron main fetches keyword/content pairs with its private token."""
+    """Contract: Electron main fetches prompt list with its private token."""
     token = getattr(app.state, "desktop_token", None)
     if not token or request.headers.get("X-PromptPlus-Token") != token:
         raise HTTPException(status_code=403, detail="Desktop access required")
-    prompts = load_prompts()
-    return [{"keyword": key, "content": data["content"]}
-            for key, data in prompts.items() if isinstance(data.get("content"), str)]
+    prompts = _normalize_prompts(load_prompts())
+    return [{"id": p.get("id"), "keyword": p.get("keyword", ""), "content": p.get("content", ""), "tags": p.get("tags", [])}
+            for p in prompts if isinstance(p.get("content"), str)]
 
 
 @app.exception_handler(Exception)
@@ -109,30 +145,17 @@ async def favicon():
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request):
     settings = load_settings()
-    prompts = load_prompts()
-    processed_prompts = {}
-    for keyword, data in prompts.items():
-        if isinstance(data, dict):
-            processed_prompts[keyword] = {
-                'content': data['content'],
-                'last_updated': data['last_updated'],
-                'tags': data.get('tags', [])
-            }
-        else:
-            processed_prompts[keyword] = {
-                'content': data,
-                'last_updated': get_current_date(),
-                'tags': []
-            }
+    prompts = _normalize_prompts(load_prompts())
+    all_tags = sorted(list(set(tag for p in prompts for tag in p.get('tags', []))))
     return templates.TemplateResponse(request, "index.html", {
-        "prompts": processed_prompts,
+        "prompts": prompts,
         "count_tokens": count_tokens,
         "theme": settings.get("theme", "dark"),
         "language": settings.get("language", "bs"),
         "start_with_windows": settings.get("start_with_windows", False),
         "shortcut": settings.get("shortcut", "CommandOrControl+Alt+P"),
         "demo_mode": get_prompts_file() == DEMO_FILE,
-        "all_tags": sorted(list(set(tag for p in processed_prompts.values() for tag in p.get('tags', [])))),
+        "all_tags": all_tags,
         "category_color": category_color,
         "version": VERSION
     })
@@ -145,48 +168,53 @@ async def add_prompt(keyword: str = Form(...), content: str = Form(...), tags: s
         keyword = ':' + keyword
     
     tag_list = [t.strip() for t in tags.split(',') if t.strip()]
-    
-    prompts[keyword] = {
+    import uuid
+    new_prompt = {
+        'id': f"p_{uuid.uuid4().hex[:10]}",
+        'keyword': keyword,
         'content': content,
         'last_updated': get_current_date(),
         'tags': tag_list
     }
+    prompts.append(new_prompt)
     save_prompts(prompts)
     return RedirectResponse("/", status_code=303)
 
 
-@app.post("/update/{old_keyword}")
-async def update_prompt(old_keyword: str, keyword: str = Form(...), content: str = Form(...), tags: str = Form("")):
+@app.post("/update/{prompt_id}")
+async def update_prompt(prompt_id: str, keyword: str = Form(...), content: str = Form(...), tags: str = Form("")):
     try:
         prompts = load_prompts()
 
-        # Process new keyword first
         if not keyword.startswith(':'):
             new_keyword = ':' + keyword
         else:
             new_keyword = keyword
 
-        # Check for keyword collision - don't overwrite existing prompts
-        if new_keyword in prompts and new_keyword != old_keyword:
-            logger.warning(f"Cannot rename '{old_keyword}' to '{new_keyword}': target already exists")
-            return HTMLResponse(
-                content=f"Prompt '{new_keyword}' already exists. Please use a different keyword.",
-                status_code=400
-            )
-
-        # Remove old keyword
-        if old_keyword in prompts:
-            del prompts[old_keyword]
-
         tag_list = [t.strip() for t in tags.split(',') if t.strip()]
 
-        prompts[new_keyword] = {
-            'content': content,
-            'last_updated': get_current_date(),
-            'tags': tag_list
-        }
+        found = False
+        for p in prompts:
+            if p.get('id') == prompt_id or p.get('keyword') == prompt_id:
+                p['keyword'] = new_keyword
+                p['content'] = content
+                p['last_updated'] = get_current_date()
+                p['tags'] = tag_list
+                found = True
+                break
+
+        if not found:
+            import uuid
+            prompts.append({
+                'id': prompt_id or f"p_{uuid.uuid4().hex[:10]}",
+                'keyword': new_keyword,
+                'content': content,
+                'last_updated': get_current_date(),
+                'tags': tag_list
+            })
+
         save_prompts(prompts)
-        logger.info(f"Updated prompt: {old_keyword} -> {new_keyword}")
+        logger.info(f"Updated prompt: {prompt_id} -> {new_keyword}")
         return RedirectResponse("/", status_code=303)
     except Exception as e:
         logger.error(f"Error updating prompt: {e}")
@@ -213,13 +241,8 @@ async def import_prompts(file: UploadFile = File(...)):
             logger.error(f"Invalid JSON in import: {e}")
             return HTMLResponse(content=f"Invalid JSON file: {str(e)}", status_code=400)
 
-        if not isinstance(imported, dict):
-            return HTMLResponse(content="Invalid JSON file: the root value must be an object.", status_code=400)
-        for keyword, value in imported.items():
-            if not isinstance(keyword, str) or not isinstance(value, (str, dict)):
-                return HTMLResponse(content="Invalid prompt format.", status_code=400)
-            if isinstance(value, dict) and not isinstance(value.get('content'), str):
-                return HTMLResponse(content="Invalid prompt content.", status_code=400)
+        if not isinstance(imported, (dict, list)):
+            return HTMLResponse(content="Invalid JSON file: the root value must be an array or object.", status_code=400)
         
         save_prompts(imported)
     except Exception as e:
@@ -229,12 +252,17 @@ async def import_prompts(file: UploadFile = File(...)):
     return RedirectResponse("/", status_code=303)
 
 
-@app.get("/delete/{keyword}")
-async def delete_prompt(keyword: str):
+@app.get("/delete/{prompt_id}")
+async def delete_prompt(prompt_id: str):
     prompts = load_prompts()
-    if keyword in prompts:
-        del prompts[keyword]
-        save_prompts(prompts)
+    new_prompts = [p for p in prompts if p.get('id') != prompt_id]
+    if len(new_prompts) == len(prompts):
+        for i, p in enumerate(prompts):
+            if p.get('keyword') == prompt_id:
+                del prompts[i]
+                new_prompts = prompts
+                break
+    save_prompts(new_prompts)
     return RedirectResponse("/", status_code=303)
 
 

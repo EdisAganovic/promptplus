@@ -36,8 +36,9 @@ else:
 
 
 class RealtimeTextReplacer:
-    def __init__(self):
+    def __init__(self, on_multiple_matches=None):
         self.lock = threading.RLock()
+        self.on_multiple_matches = on_multiple_matches
         self.prompts = self._load_prompts()
         self.last_file_mod_time = self._get_file_mod_time()
         self.current_buffer = ""
@@ -45,7 +46,7 @@ class RealtimeTextReplacer:
         self._running = True
         self._keyboard_hook = None
         self._pynput_listener = None
-        self._prompts_cache = {}
+        self._keyword_map_cache = {}
         self._keyword_lengths_cache = set()
         self._cache_valid = False
 
@@ -53,17 +54,35 @@ class RealtimeTextReplacer:
         try:
             with open(get_prompts_file(), encoding="utf-8") as handle:
                 data = json.load(handle)
-            if not isinstance(data, dict):
-                return {}
-            return {
-                key: value["content"] if isinstance(value, dict) else value
-                for key, value in data.items()
-                if isinstance(key, str)
-                and (isinstance(value, str) or
-                     (isinstance(value, dict) and isinstance(value.get("content"), str)))
-            }
+            prompts = []
+            if isinstance(data, list):
+                for idx, item in enumerate(data):
+                    if isinstance(item, dict) and isinstance(item.get("content"), str):
+                        prompts.append({
+                            "id": str(item.get("id") or f"p_{idx + 1}"),
+                            "keyword": item.get("keyword", ""),
+                            "content": item["content"],
+                            "tags": item.get("tags", []) if isinstance(item.get("tags"), list) else []
+                        })
+            elif isinstance(data, dict):
+                for idx, (key, value) in enumerate(data.items()):
+                    if isinstance(value, str):
+                        prompts.append({
+                            "id": f"p_{idx + 1}",
+                            "keyword": key,
+                            "content": value,
+                            "tags": []
+                        })
+                    elif isinstance(value, dict) and isinstance(value.get("content"), str):
+                        prompts.append({
+                            "id": str(value.get("id") or f"p_{idx + 1}"),
+                            "keyword": key,
+                            "content": value["content"],
+                            "tags": value.get("tags", []) if isinstance(value.get("tags"), list) else []
+                        })
+            return prompts
         except (OSError, ValueError):
-            return {}
+            return []
 
     def _get_file_mod_time(self):
         prompt_file = get_prompts_file()
@@ -83,19 +102,24 @@ class RealtimeTextReplacer:
 
     def _get_lookup_caches(self):
         if not self._cache_valid:
-            self._prompts_cache = dict(self.prompts)
-            self._keyword_lengths_cache = {len(key) + 1 for key in self.prompts}
+            mapping = {}
+            for prompt in self.prompts:
+                kw = prompt.get("keyword")
+                if isinstance(kw, str) and kw:
+                    mapping.setdefault(kw, []).append(prompt)
+            self._keyword_map_cache = mapping
+            self._keyword_lengths_cache = {len(key) + 1 for key in mapping}
             self._cache_valid = True
-        return self._prompts_cache, self._keyword_lengths_cache
+        return self._keyword_map_cache, self._keyword_lengths_cache
 
     def _check_for_replacement_unlocked(self):
         if self.is_replacing or not self.current_buffer:
             return None
-        prompts, lengths = self._get_lookup_caches()
+        keyword_map, lengths = self._get_lookup_caches()
         for length in sorted(lengths, reverse=True):
             if len(self.current_buffer) >= length:
                 suffix = self.current_buffer[-length:]
-                if suffix.endswith(" ") and suffix[:-1] in prompts:
+                if suffix.endswith(" ") and suffix[:-1] in keyword_map:
                     return suffix[:-1]
         return None
 
@@ -117,23 +141,50 @@ class RealtimeTextReplacer:
             if name in ("space", "backspace"):
                 keyword = self._check_for_replacement_unlocked()
                 if keyword:
-                    content = self.prompts[keyword]
-                    self.current_buffer = ""
-                    self.is_replacing = True
-                    threading.Thread(
-                        target=self._replace_keyword,
-                        args=(keyword, content), daemon=True,
-                    ).start()
-                    return
+                    keyword_map, _ = self._get_lookup_caches()
+                    matches = keyword_map.get(keyword, [])
+                    if matches:
+                        self.current_buffer = ""
+                        self.is_replacing = True
+                        if len(matches) == 1:
+                            threading.Thread(
+                                target=self._replace_keyword_single,
+                                args=(keyword, matches[0]["content"]),
+                                daemon=True,
+                            ).start()
+                        else:
+                            threading.Thread(
+                                target=self._trigger_multiple_matches,
+                                args=(keyword, matches),
+                                daemon=True,
+                            ).start()
+                        return
             self.current_buffer = self.current_buffer[-50:]
 
-    def _replace_keyword(self, keyword, content):
+    def _replace_keyword_single(self, keyword, content):
         time.sleep(0.05)
         try:
             pyautogui.press("backspace", presses=len(keyword) + 1, interval=0.015)
             self._paste_text(content)
         except Exception as exc:
             print(f"Text replacement failed: {exc}", file=sys.stderr, flush=True)
+        finally:
+            self.is_replacing = False
+
+    def _trigger_multiple_matches(self, keyword, matches):
+        time.sleep(0.05)
+        try:
+            pyautogui.press("backspace", presses=len(keyword) + 1, interval=0.015)
+            if self.on_multiple_matches:
+                self.on_multiple_matches(keyword, matches)
+            else:
+                print(json.dumps({
+                    "event": "show_picker",
+                    "keyword": keyword,
+                    "prompts": matches
+                }), flush=True)
+        except Exception as exc:
+            print(f"Multiple matches trigger failed: {exc}", file=sys.stderr, flush=True)
         finally:
             self.is_replacing = False
 
@@ -154,11 +205,8 @@ class RealtimeTextReplacer:
                 except Exception:
                     pass
 
-    def paste_prompt(self, keyword):
-        self.reload_prompts_if_needed()
-        with self.lock:
-            content = self.prompts.get(keyword)
-        if content is None:
+    def paste_content(self, content):
+        if not isinstance(content, str):
             return False
         with self.lock:
             self.is_replacing = True
@@ -168,6 +216,31 @@ class RealtimeTextReplacer:
         finally:
             self.is_replacing = False
         return True
+
+    def paste_prompt_by_id(self, prompt_id):
+        self.reload_prompts_if_needed()
+        with self.lock:
+            target = next((p for p in self.prompts if p.get("id") == prompt_id), None)
+        if target is None or not isinstance(target.get("content"), str):
+            return False
+        return self.paste_content(target["content"])
+
+    def paste_prompt(self, keyword):
+        self.reload_prompts_if_needed()
+        with self.lock:
+            target = next((p for p in self.prompts if p.get("keyword") == keyword or p.get("id") == keyword), None)
+        if target is None or not isinstance(target.get("content"), str):
+            return False
+        return self.paste_content(target["content"])
+
+    def paste_any(self, content=None, prompt_id=None, keyword=None):
+        if isinstance(content, str) and content:
+            return self.paste_content(content)
+        if isinstance(prompt_id, str) and prompt_id:
+            return self.paste_prompt_by_id(prompt_id)
+        if isinstance(keyword, str) and keyword:
+            return self.paste_prompt(keyword)
+        return False
 
     def _pynput_on_press(self, key):
         if key == pynput_keyboard.Key.space:

@@ -24,10 +24,17 @@ def read_desktop_commands(server, replacer):
     for line in sys.stdin:
         try:
             command = json.loads(line)
-            if command.get("type") == "paste" and isinstance(command.get("keyword"), str):
-                threading.Thread(target=replacer.paste_prompt,
-                                 args=(command["keyword"],), daemon=True).start()
-            elif command.get("type") == "shutdown":
+            cmd_type = command.get("type")
+            if cmd_type in ("paste", "paste_content", "paste_id"):
+                content = command.get("content")
+                prompt_id = command.get("id")
+                keyword = command.get("keyword")
+                threading.Thread(
+                    target=replacer.paste_any,
+                    args=(content, prompt_id, keyword),
+                    daemon=True,
+                ).start()
+            elif cmd_type == "shutdown":
                 break
         except (ValueError, TypeError) as exc:
             print(f"Invalid desktop command: {exc}", file=sys.stderr, flush=True)

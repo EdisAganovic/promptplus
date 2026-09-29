@@ -66,14 +66,14 @@
         </div>
     </nav>
 
-    {% macro prompt_actions(keyword, prompt_data) %}
+    {% macro prompt_actions(prompt) %}
     <div class="library-actions">
-        <button type="button" class="btn-edit-prompt" data-keyword="{{ keyword }}" data-content="{{ prompt_data.content }}"
-            data-tags="{{ prompt_data.tags|join(', ') }}" data-i18n-title="prompt.editTitle" title="Uredi prompt" aria-label="Uredi {{ keyword }}">
+        <button type="button" class="btn-edit-prompt" data-id="{{ prompt.id }}" data-keyword="{{ prompt.keyword }}" data-content="{{ prompt.content }}"
+            data-tags="{{ prompt.tags|join(', ') }}" data-i18n-title="prompt.editTitle" title="Uredi prompt" aria-label="Uredi {{ prompt.keyword }}">
             <i class="far fa-pen-to-square" aria-hidden="true"></i>
         </button>
-        <button type="button" class="btn-delete-confirm" data-keyword="{{ keyword }}" data-url="/delete/{{ keyword|urlencode }}"
-            data-i18n-title="prompt.deleteTitle" title="Obriši prompt" aria-label="Obriši {{ keyword }}">
+        <button type="button" class="btn-delete-confirm" data-id="{{ prompt.id }}" data-keyword="{{ prompt.keyword }}" data-url="/delete/{{ prompt.id|urlencode }}"
+            data-i18n-title="prompt.deleteTitle" title="Obriši prompt" aria-label="Obriši {{ prompt.keyword }}">
             <i class="far fa-trash-can" aria-hidden="true"></i>
         </button>
     </div>
@@ -107,12 +107,12 @@
         <div class="library-prompt-scroll" id="promptScroll" tabindex="0" aria-label="Prompt results">
         {% if prompts %}
         <div class="library-grid" id="promptsContainer">
-            {% for keyword, prompt_data in prompts.items() %}
-            <article class="library-card prompt-item" data-keyword="{{ keyword }}" data-content="{{ prompt_data.content }}" data-tags="{{ prompt_data.tags|join(',') }}">
-                <div class="library-card-top"><span class="library-index">{{ '%02d'|format(loop.index) }}</span>{{ prompt_actions(keyword, prompt_data) }}</div>
-                <h2>{{ keyword|replace(':', '')|replace('demo-', '')|replace('-', ' ')|title }}</h2>
-                <p class="library-preview">{{ prompt_data.content }}</p>
-                <div class="library-meta"><span class="library-tags">{% for tag in prompt_data.tags %}<span class="library-tag">{{ tag }}</span>{% endfor %}</span><span class="library-keyword">{{ keyword }}</span></div>
+            {% for prompt in prompts %}
+            <article class="library-card prompt-item" data-id="{{ prompt.id }}" data-keyword="{{ prompt.keyword }}" data-content="{{ prompt.content }}" data-tags="{{ prompt.tags|join(',') }}">
+                <div class="library-card-top"><span class="library-index">{{ '%02d'|format(loop.index) }}</span>{{ prompt_actions(prompt) }}</div>
+                <h2>{{ prompt.keyword|replace(':', '')|replace('demo-', '')|replace('-', ' ')|title }}</h2>
+                <p class="library-preview">{{ prompt.content }}</p>
+                <div class="library-meta"><span class="library-tags">{% for tag in prompt.tags %}<span class="library-tag">{{ tag }}</span>{% endfor %}</span><span class="library-keyword">{{ prompt.keyword }}</span></div>
             </article>
             {% endfor %}
         </div>
@@ -120,13 +120,13 @@
             <table class="library-table"><thead><tr>
                 <th scope="col" data-i18n="library.name">Naziv</th><th scope="col" data-i18n="library.preview">Pregled</th><th scope="col" data-i18n="library.tags">Tagovi</th><th scope="col" data-i18n="library.shortcut">Prečica</th><th scope="col" data-i18n="library.actions">Radnje</th>
             </tr></thead><tbody>
-            {% for keyword, prompt_data in prompts.items() %}
-                <tr class="prompt-item" data-keyword="{{ keyword }}" data-content="{{ prompt_data.content }}" data-tags="{{ prompt_data.tags|join(',') }}">
-                    <td class="library-table-name"><i class="far fa-file-lines" aria-hidden="true"></i>{{ keyword|replace(':', '')|replace('demo-', '')|replace('-', ' ')|title }}</td>
-                    <td class="library-table-preview">{{ prompt_data.content }}</td>
-                    <td>{% for tag in prompt_data.tags %}<span class="library-tag">{{ tag }}</span>{% endfor %}</td>
-                    <td class="library-keyword">{{ keyword }}</td>
-                    <td>{{ prompt_actions(keyword, prompt_data) }}</td>
+            {% for prompt in prompts %}
+                <tr class="prompt-item" data-id="{{ prompt.id }}" data-keyword="{{ prompt.keyword }}" data-content="{{ prompt.content }}" data-tags="{{ prompt.tags|join(',') }}">
+                    <td class="library-table-name"><i class="far fa-file-lines" aria-hidden="true"></i>{{ prompt.keyword|replace(':', '')|replace('demo-', '')|replace('-', ' ')|title }}</td>
+                    <td class="library-table-preview">{{ prompt.content }}</td>
+                    <td>{% for tag in prompt.tags %}<span class="library-tag">{{ tag }}</span>{% endfor %}</td>
+                    <td class="library-keyword">{{ prompt.keyword }}</td>
+                    <td>{{ prompt_actions(prompt) }}</td>
                 </tr>
             {% endfor %}
             </tbody></table>
@@ -724,6 +724,7 @@
 
         document.querySelectorAll('.btn-edit-prompt').forEach(btn => {
             btn.addEventListener('click', function () {
+                const id = this.getAttribute('data-id') || this.getAttribute('data-keyword');
                 const keyword = this.getAttribute('data-keyword');
                 const content = this.getAttribute('data-content');
                 const tags = this.getAttribute('data-tags');
@@ -733,8 +734,8 @@
                 editContentInput.value = content;
                 editTagsInput.value = tags;
 
-                // Update form action URL to include the old keyword in the path
-                editForm.action = `/update/${encodeURIComponent(keyword)}`;
+                // Update form action URL to include the prompt ID in the path
+                editForm.action = `/update/${encodeURIComponent(id)}`;
 
                 editModal.show();
             });

@@ -7,9 +7,23 @@
   <link rel="stylesheet" href="quick-search.css">
 </head>
 <body>
-  <header><strong>Quick Search</strong><button id="close" aria-label="Close">×</button></header>
-  <input id="query" type="search" placeholder="Search prompts…" autocomplete="off" autofocus>
+  <header>
+    <div class="header-title-group">
+      <strong id="title">Quick Search</strong>
+      <span id="mode-badge" class="mode-badge" hidden></span>
+    </div>
+    <button id="close" aria-label="Close">×</button>
+  </header>
+  <div class="search-wrap">
+    <input id="query" type="search" placeholder="Search prompts…" autocomplete="off" autofocus>
+  </div>
   <div id="results" role="listbox"></div>
+  <footer class="shortcuts-hint">
+    <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+    <span><kbd>↵ Enter</kbd> Paste</span>
+    <span><kbd>1</kbd>-<kbd>9</kbd> Quick Pick</span>
+    <span><kbd>Esc</kbd> Close</span>
+  </footer>
   <script src="quick-search.js"></script>
 </body>
 </html>

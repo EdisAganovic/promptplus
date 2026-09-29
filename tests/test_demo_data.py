@@ -32,18 +32,18 @@ class DemoDataTests(unittest.TestCase):
             personal.write_text(json.dumps({":personal": {"content": "private"}}), encoding="utf-8")
             original_personal = personal.read_bytes()
             with patch.object(utils, "PROMPTS_FILE", str(personal)), patch.object(utils, "DEMO_FILE", str(demo)):
-                self.assertEqual(set(utils.load_prompts()), {":personal"})
+                self.assertEqual({p["keyword"] for p in utils.load_prompts()}, {":personal"})
                 demo.write_text(json.dumps({":demo-test": {"content": "sample", "tags": ["Writing"]}}), encoding="utf-8")
-                self.assertEqual(set(utils.load_prompts()), {":demo-test"})
+                self.assertEqual({p["keyword"] for p in utils.load_prompts()}, {":demo-test"})
                 replacer = RealtimeTextReplacer()
-                self.assertEqual(replacer.prompts, {":demo-test": "sample"})
+                self.assertEqual({p["keyword"]: p["content"] for p in replacer.prompts}, {":demo-test": "sample"})
                 utils.save_prompts({":demo-edited": {"content": "edited", "tags": ["Writing"]}})
                 self.assertEqual(personal.read_bytes(), original_personal)
-                self.assertEqual(set(utils.load_prompts()), {":demo-edited"})
+                self.assertEqual({p["keyword"] for p in utils.load_prompts()}, {":demo-edited"})
                 demo.unlink()
-                self.assertEqual(set(utils.load_prompts()), {":personal"})
+                self.assertEqual({p["keyword"] for p in utils.load_prompts()}, {":personal"})
                 replacer.reload_prompts_if_needed()
-                self.assertEqual(replacer.prompts, {":personal": "private"})
+                self.assertEqual({p["keyword"]: p["content"] for p in replacer.prompts}, {":personal": "private"})
 
 
 if __name__ == "__main__":

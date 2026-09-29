@@ -72,30 +72,59 @@ def load_prompts():
             try:
                 with open(prompt_file, 'r', encoding='utf-8') as f:
                     data = json.load(f)
-                    prompts = {}
-                    for key, value in data.items():
-                        if isinstance(value, str):
-                            prompts[key] = {
-                                'content': value,
-                                'last_updated': get_current_date()
-                            }
-                        elif isinstance(value, dict) and 'content' in value:
-                            if 'last_updated' not in value:
-                                value['last_updated'] = get_current_date()
-                            if 'tags' not in value or not isinstance(value['tags'], list):
-                                value['tags'] = []
-                            prompts[key] = value
-                        else:
-                            prompts[key] = {
-                                'content': str(value),
-                                'last_updated': get_current_date(),
-                                'tags': []
-                            }
+                    prompts = []
+                    if isinstance(data, list):
+                        for idx, item in enumerate(data):
+                            if isinstance(item, dict):
+                                p_id = str(item.get("id") or f"p_{idx + 1}")
+                                kw = item.get("keyword", "")
+                                content = item.get("content", "")
+                                last_updated = item.get("last_updated", get_current_date())
+                                tags = item.get("tags", [])
+                                if not isinstance(tags, list):
+                                    tags = []
+                                prompts.append({
+                                    'id': p_id,
+                                    'keyword': kw,
+                                    'content': content,
+                                    'last_updated': last_updated,
+                                    'tags': tags
+                                })
+                    elif isinstance(data, dict):
+                        for idx, (key, value) in enumerate(data.items()):
+                            p_id = f"p_{idx + 1}"
+                            if isinstance(value, str):
+                                prompts.append({
+                                    'id': p_id,
+                                    'keyword': key,
+                                    'content': value,
+                                    'last_updated': get_current_date(),
+                                    'tags': []
+                                })
+                            elif isinstance(value, dict) and 'content' in value:
+                                tags = value.get('tags', [])
+                                if not isinstance(tags, list):
+                                    tags = []
+                                prompts.append({
+                                    'id': str(value.get('id') or p_id),
+                                    'keyword': key,
+                                    'content': value['content'],
+                                    'last_updated': value.get('last_updated', get_current_date()),
+                                    'tags': tags
+                                })
+                            else:
+                                prompts.append({
+                                    'id': p_id,
+                                    'keyword': key,
+                                    'content': str(value),
+                                    'last_updated': get_current_date(),
+                                    'tags': []
+                                })
                     return prompts
             except Exception as e:
                 print(f"Error loading prompts: {e}")
-                return {}
-    return {}
+                return []
+    return []
 
 
 def save_prompts(prompts):
@@ -106,8 +135,37 @@ def save_prompts(prompts):
         directory = os.path.dirname(prompt_file) or "."
         fd, temp_path = tempfile.mkstemp(prefix=".prompts-", suffix=".tmp", dir=directory)
         try:
+            save_data = []
+            if isinstance(prompts, list):
+                for idx, p in enumerate(prompts):
+                    if isinstance(p, dict):
+                        save_data.append({
+                            'id': str(p.get('id') or f"p_{idx + 1}"),
+                            'keyword': p.get('keyword', ''),
+                            'content': p.get('content', ''),
+                            'last_updated': p.get('last_updated', get_current_date()),
+                            'tags': p.get('tags', []) if isinstance(p.get('tags'), list) else []
+                        })
+            elif isinstance(prompts, dict):
+                for idx, (k, v) in enumerate(prompts.items()):
+                    if isinstance(v, dict):
+                        save_data.append({
+                            'id': str(v.get('id') or f"p_{idx + 1}"),
+                            'keyword': k,
+                            'content': v.get('content', ''),
+                            'last_updated': v.get('last_updated', get_current_date()),
+                            'tags': v.get('tags', []) if isinstance(v.get('tags'), list) else []
+                        })
+                    else:
+                        save_data.append({
+                            'id': f"p_{idx + 1}",
+                            'keyword': k,
+                            'content': str(v),
+                            'last_updated': get_current_date(),
+                            'tags': []
+                        })
             with os.fdopen(fd, 'w', encoding='utf-8') as f:
-                json.dump(prompts, f, ensure_ascii=False, indent=2)
+                json.dump(save_data, f, ensure_ascii=False, indent=2)
                 f.flush()
                 os.fsync(f.fileno())
             os.replace(temp_path, prompt_file)
